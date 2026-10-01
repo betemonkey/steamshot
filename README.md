@@ -1,9 +1,9 @@
-# steam-snapshot
+# Steamshot
 
 Snapshots of your Steam library on a schedule, plus a small dashboard to browse them.
 
 Steam only tells you a running total of hours per game and when you last played it.
-It keeps no history at all. steam-snapshot runs in the background (Task Scheduler on
+It keeps no history at all. Steamshot runs in the background (Task Scheduler on
 Windows, cron on Linux and macOS), saves a snapshot of your library each day, and
 works out how much you played each game each day by comparing those snapshots.
 The dashboard shows the result: playtime per day, what you played lately, what
@@ -16,7 +16,7 @@ release countdowns, and a searchable library.
 - **Read-only.** Nothing in your Steam folder is ever modified.
 - **Stays on your machine.** Snapshots are plain JSON files in a folder you choose. The
   dashboard listens on `127.0.0.1` only.
-- **No dependencies.** Python 3.11+ standard library, nothing to `pip install`.
+- **No dependencies.** Python 3.11+ standard library only; it runs straight from the folder.
 
 ## How it works
 
@@ -47,42 +47,129 @@ replaces it, so you keep one snapshot per day. Each run also adds the hours gain
 since the previous run to `history.json`. **History starts with your first snapshot and
 cannot be backfilled**, so it's worth scheduling it early.
 
-## Requirements
+## Set it up on a PC
 
-- **Python 3.11 or newer.** Check with `python --version`, or `py -3 --version` on Windows.
-  - Windows: install from [python.org](https://www.python.org/downloads/) or run
-    `winget install Python.Python.3.13`.
-  - macOS: `brew install python`.
-  - Linux: your distribution's `python3` package (3.11+).
-- **The Steam desktop client**, installed and logged in on the same machine at least once.
+Do this on the PC where you play, since it reads that PC's Steam files. It takes about
+five minutes. The command is always `python -m steam_snapshot`, whatever the folder is called.
 
-## Quick start
+### 1. Get access to the code
+
+This repository is private. Ask the owner to add your GitHub account under
+**Settings > Collaborators**, then accept the invite from your email. Alternatively,
+sign in to GitHub and use **Code > Download ZIP** on the repository page.
+
+### 2. Install Python 3.11+ (and Git)
+
+**Windows** (PowerShell):
+
+```powershell
+winget install Python.Python.3.13
+winget install Git.Git
+```
+
+Close and reopen PowerShell, then check: `py -3 --version` should print 3.11 or newer.
+On Windows, use `py -3` wherever this guide says `python`. Plain `python` may open the
+Microsoft Store instead.
+
+**macOS:** `brew install python git`. **Linux:** your distribution's `python3` (3.11+) and
+`git` packages. On both, use `python3` wherever this guide says `python`.
+
+You also need the **Steam desktop client** installed, and logged in on this PC at least once.
+
+### 3. Download it to a permanent folder
+
+The scheduled job runs from this folder, so pick a place you won't move or delete:
+
+```powershell
+# Windows
+cd $HOME
+git clone https://github.com/betemonkey/steamshot.git
+cd steamshot
+```
 
 ```bash
-git clone <this repo> steam-snapshot
-cd steam-snapshot
+# Linux / macOS
+cd ~
+git clone https://github.com/betemonkey/steamshot.git
+cd steamshot
+```
 
-# 1. Look around first, using invented data (opens on http://127.0.0.1:8765)
+Git will ask you to sign in to GitHub the first time, because the repository is private.
+If you downloaded the ZIP instead, unzip it into that permanent place and `cd` into it.
+
+### 4. Try the dashboard with demo data (optional)
+
+```bash
 python -m steam_snapshot demo --open
+```
 
-# 2. Create your config and check what the tool can see
-python -m steam_snapshot init
-python -m steam_snapshot doctor
+This opens http://127.0.0.1:8765 with invented data, so you can see what you'll get.
+Press Ctrl+C in the terminal to stop it.
 
-# 3. Take your first real snapshot
+### 5. Configure and check
+
+```bash
+python -m steam_snapshot init      # creates config.toml from the example
+python -m steam_snapshot doctor    # shows what it can see; changes nothing
+```
+
+`doctor` should list your Steam folder, your account (marked with `*`), and `[ok]` for
+each data source. With one Steam account on the PC, the defaults work as they are.
+Otherwise, open `config.toml` and set the options described in
+[Configuration](#configuration), such as the account, the data folder or how long to keep
+snapshots.
+
+For the wishlist, your Steam profile's **Game details** must be Public:
+Steam > your profile > Edit Profile > Privacy Settings. `doctor` tells you if it isn't.
+
+### 6. Take the first snapshot
+
+```bash
 python -m steam_snapshot snapshot
+```
 
-# 4. Schedule it (prints the exact command for your OS, see below)
+It prints something like `snapshot saved: 87 games, 1,240 h, wishlist 12 (ok)`.
+
+### 7. Run it automatically
+
+```bash
 python -m steam_snapshot schedule
+```
 
-# 5. Open the dashboard
+This **prints** the command for your system with this PC's paths already filled in; it
+doesn't install anything by itself. Copy what it prints:
+
+- **Windows:** paste the printed block into PowerShell. It creates a Task Scheduler task
+  named `steam-snapshot` that runs every 30 minutes while you're logged in. To test it
+  right away, run `Start-ScheduledTask -TaskName steam-snapshot`.
+- **Linux / macOS:** run `crontab -e` and add the printed line.
+
+Check that it's firing: every run adds a line to `data/steam-snapshot.log`. See
+[Scheduling](#scheduling) for other intervals and how to remove it.
+
+### 8. Open the dashboard
+
+```bash
 python -m steam_snapshot serve --open
 ```
 
-On Windows, if `python` opens the Microsoft Store, use `py -3` instead of `python`.
+The dashboard runs while that terminal is open. Start it again whenever you want to look.
+The snapshots keep being taken in the background either way.
 
-You can also `pip install .` inside the folder. That adds a `steam-snapshot` command
-which does the same as `python -m steam_snapshot`.
+### Updating
+
+```bash
+cd steamshot     # the folder from step 3
+git pull
+```
+
+Your `config.toml` and `data/` folder are never touched by an update.
+
+### Moving to a new PC, or using several
+
+Your history lives in the `data/` folder. To move to a new PC, set it up there (steps 1-7)
+and copy the old `data/` folder over before the first snapshot. Several PCs each keep
+their own history; they are not merged.
 
 ## Configuration
 
@@ -125,7 +212,7 @@ file reads and at most three small web requests.
 needed):
 
 ```powershell
-$action = New-ScheduledTaskAction -Execute 'C:\...\pythonw.exe' -Argument '-m steam_snapshot snapshot' -WorkingDirectory 'C:\...\steam-snapshot'
+$action = New-ScheduledTaskAction -Execute 'C:\...\pythonw.exe' -Argument '-m steam_snapshot snapshot' -WorkingDirectory 'C:\...\steamshot'
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 30)
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
 Register-ScheduledTask -TaskName 'steam-snapshot' -Action $action -Trigger $trigger -Settings $settings -Description 'Snapshot of the Steam library (steam-snapshot)'
@@ -141,7 +228,7 @@ you're logged in, which is also when Steam is in use. To run it right away:
 `schedule` prints one line. Add it with `crontab -e`:
 
 ```cron
-*/30 * * * * cd '/home/you/steam-snapshot' && '/usr/bin/python3' -m steam_snapshot snapshot >/dev/null 2>&1
+*/30 * * * * cd '/home/you/steamshot' && '/usr/bin/python3' -m steam_snapshot snapshot >/dev/null 2>&1
 ```
 
 To remove it, delete the line again with `crontab -e`.
