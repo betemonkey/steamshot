@@ -1,0 +1,127 @@
+"""Keyless lookups against Steam's public web endpoints.
+
+Used for three things the local files cannot answer: names for games missing
+from Steam's local cache (new purchases, the whole wishlist), the wishlist
+itself, and release dates for wishlisted games. None of these need an API key
+or a login. Every call is optional - with `[online] enabled = false` this
+module is never imported into a run's path and nothing leaves the machine.
+
+Only app ids and your public SteamID64 are ever sent.
+"""
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+
+from . import __version__
+
+GET_ITEMS = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/"
+GET_WISHLIST = "https://api.steampowered.com/IWishlistService/GetWishlist/v1/"
+APPDETAILS = "https://store.steampowered.com/api/appdetails"
+USER_AGENT = f"steam-snapshot/{__version__}"
+BATCH = 50
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+class StoreError(Exception):
+    pass
+
+
+def get_json(url, timeout=20):
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        raise StoreError(f"{type(e).__name__}: {e}") from e
+
+
+def get_items(appids, country="US", language="english", release=False):
+    """{app id: store item} for a list of app ids, batched. Unknown or
+    delisted ids are simply absent. Raises StoreError if Steam is unreachable."""
+    ids = []
+    for a in dict.fromkeys(appids):
+        try:
+            ids.append(int(a))
+        except (TypeError, ValueError):
+            continue
+    out = {}
+    for i in range(0, len(ids), BATCH):
+        req = {"ids": [{"appid": a} for a in ids[i:i + BATCH]],
+               "context": {"language": language, "country_code": country}}
+        if release:
+            req["data_request"] = {"include_release": True}
+        q = urllib.parse.urlencode({"input_json": json.dumps(req)})
+        data = get_json(f"{GET_ITEMS}?{q}")
+        for it in ((data.get("response") or {}).get("store_items") or []):
+            try:
+                appid = int(it.get("appid") or it.get("id") or 0)
+            except (TypeError, ValueError):
+                continue
+            if appid:
+                out[appid] = it
+    return out
+
+
+def appdetails_name(appid):
+    """Fallback name lookup for ids the batched call did not know."""
+    data = get_json(f"{APPDETAILS}?appids={int(appid)}&filters=basic")
+    return str((((data.get(str(appid)) or {}).get("data")) or {}).get("name") or "")
+
+
+def release_of(item):
+    """(iso date, display string, coming soon) from a GetItems store item.
+
+    Steam's appdetails only ships a display string rendered in US Pacific
+    time, which can be a day off. GetItems carries the raw timestamp, so the
+    date is computed in this machine's own time zone. A release *window*
+    ("Q1 2027", "2027") also carries a timestamp - the window's last day - and
+    is flagged by coming_soon_display; those keep no day, so a vague window
+    never turns into an invented countdown.
+    """
+    rel = (item or {}).get("release") or {}
+    coming = bool(item.get("is_coming_soon") or rel.get("is_coming_soon")
+                  or rel.get("coming_soon_display"))
+    try:
+        ts = int(rel.get("steam_release_date") or 0)
+    except (TypeError, ValueError):
+        ts = 0
+    disp = rel.get("coming_soon_display")
+    if ts > 0 and (not disp or disp == "date_full"):
+        d = datetime.fromtimestamp(ts)
+        return d.date().isoformat(), f"{d.day} {MONTHS[d.month - 1]} {d.year}", coming
+    text = (rel.get("custom_release_date_message") or "").strip()
+    if not text and ts > 0:
+        d = datetime.fromtimestamp(ts)
+        text = {"date_quarter": f"Q{(d.month - 1) // 3 + 1} {d.year}",
+                "date_year": str(d.year),
+                "date_month": f"{MONTHS[d.month - 1]} {d.year}"}.get(disp, "")
+    return "", text or ("Coming soon" if coming else ""), coming
+
+
+def wishlist(steamid64):
+    """[{"appid", "added", "priority"}] or None when Steam would not say.
+
+    The endpoint answers for any profile whose game details are public. A
+    private profile gets {"response": {}} - no items key at all - which is
+    "don't know", not "empty"; callers keep the last good list.
+    """
+    data = get_json(f"{GET_WISHLIST}?" + urllib.parse.urlencode({"steamid": str(steamid64)}))
+    items = (data.get("response") or {}).get("items")
+    if not isinstance(items, list):
+        return None
+    out = []
+    for it in items:
+        try:
+            appid = int(it.get("appid") or 0)
+            added = int(it.get("date_added") or 0)
+            priority = int(it.get("priority") or 0)
+        except (AttributeError, TypeError, ValueError):
+            continue
+        if appid > 0:
+            out.append({"appid": appid, "priority": priority,
+                        "added": (datetime.fromtimestamp(added, timezone.utc)
+                                  .date().isoformat() if added else "")})
+    return out

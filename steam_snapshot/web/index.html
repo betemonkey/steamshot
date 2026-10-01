@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steam snapshot</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f1f0ec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, .10);
+  --accent: #2a78d6;
+  --accent-wash: rgba(42, 120, 214, .12);
+  --good: #006300;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #242422;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, .10);
+    --accent: #3987e5;
+    --accent-wash: rgba(57, 135, 229, .16);
+    --good: #0ca30c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #242422;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, .10);
+  --accent: #3987e5;
+  --accent-wash: rgba(57, 135, 229, .16);
+  --good: #0ca30c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-bottom: 18px; }
+header h1 { font-size: 20px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+.who { color: var(--ink-2); }
+.chip {
+  display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
+  background: var(--accent-wash); color: var(--ink); white-space: nowrap;
+}
+.spacer { flex: 1; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--ink-2); }
+select, input[type=search], button {
+  font: inherit; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+}
+button { cursor: pointer; }
+button:hover, select:hover { background: var(--surface-2); }
+button[aria-pressed=true] { background: var(--accent-wash); border-color: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
+.tile, .card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.tile { padding: 14px 16px; min-width: 0; }
+.tile .label { color: var(--ink-2); font-size: 13px; }
+.tile .value { font-size: 26px; font-weight: 650; margin-top: 2px; letter-spacing: -.01em; }
+.tile .delta { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.tile .delta.up { color: var(--good); }
+
+.grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 12px; margin-bottom: 12px; }
+.grid.even { grid-template-columns: 1fr 1fr; }
+.card { padding: 16px; min-width: 0; }
+.card h2 { font-size: 15px; margin: 0; font-weight: 650; }
+.card .sub { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
+.card-head { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 12px; }
+.card-head .spacer { flex: 1; }
+.seg { display: inline-flex; gap: 4px; }
+.seg button { padding: 3px 9px; font-size: 12.5px; white-space: nowrap; }
+
+#chart { position: relative; }
+#chart svg { display: block; width: 100%; height: 220px; overflow: visible; }
+.tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5; min-width: 150px; max-width: 240px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); font-size: 12.5px;
+}
+.tip b { display: block; margin-bottom: 2px; }
+.tip .row { display: flex; gap: 10px; justify-content: space-between; color: var(--ink-2); }
+.tip .row span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tip .row span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+details.table-view { margin-top: 10px; color: var(--ink-2); font-size: 12.5px; }
+details.table-view table { margin-top: 6px; }
+
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; min-width: 0; }
+.list li + li { border-top: 1px solid var(--border); }
+.list .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .num { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.thumb {
+  width: 62px; height: 23px; border-radius: 4px; object-fit: cover; flex: none;
+  background: var(--surface-2);
+}
+.thumb.lg { width: 92px; height: 34px; }
+.empty { color: var(--ink-2); padding: 8px 0; }
+
+.bars .bar-row { display: grid; grid-template-columns: minmax(90px, 34%) 1fr auto; gap: 10px; align-items: center; padding: 4px 0; }
+.bars .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars .bar-track { height: 14px; position: relative; }
+.bars .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bars .bar-val { color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
+
+.changes h3 { font-size: 12.5px; color: var(--ink-2); font-weight: 600; margin: 12px 0 2px; text-transform: none; }
+.changes h3:first-child { margin-top: 0; }
+.plus { color: var(--good); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.wish { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.wish .w { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; background: var(--surface-2); min-width: 0; }
+.wish .w .t { min-width: 0; }
+.wish .w .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wish .w .d { color: var(--ink-2); font-size: 12.5px; }
+
+.lib-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.lib-tools input[type=search] { flex: 1 1 200px; min-width: 0; }
+.lib-tools label { color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+th { font-size: 12.5px; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+th[data-sort] { cursor: pointer; user-select: none; }
+th[data-sort]:hover { color: var(--ink); }
+th .arrow { display: inline-block; width: 1em; color: var(--accent); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.game { display: flex; gap: 10px; align-items: center; min-width: 0; }
+td.game a { color: inherit; text-decoration: none; }
+td.game a:hover { text-decoration: underline; }
+.tag { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); margin-left: 6px; white-space: nowrap; }
+.muted { color: var(--ink-2); }
+.more { margin-top: 10px; }
+footer { color: var(--ink-2); font-size: 12.5px; margin-top: 18px; }
+footer code, .empty code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+@media (max-width: 900px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .tiles .tile:last-child { grid-column: span 2; }
+  .grid, .grid.even { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .col-col, .col-size, td.game .thumb { display: none; }
+  th, td { padding: 7px 5px; }
+  .tile .value { font-size: 22px; }
+  .thumb { width: 46px; height: 17px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Steam snapshot</h1>
+    <span class="who" id="who"></span>
+    <span class="spacer"></span>
+    <div class="controls">
+      <select id="account" aria-label="Account" hidden></select>
+      <label for="day">Snapshot</label>
+      <select id="day"></select>
+      <span id="taken"></span>
+      <button id="theme" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
+    </div>
+  </header>
+
+  <main id="main"><p class="empty">Loading…</p></main>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+"use strict";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const fmtH = m => { const h = m / 60; return h >= 100 ? Math.round(h).toLocaleString() : h >= 10 ? h.toFixed(0) : h.toFixed(1); };
+const fmtBytes = b => b >= 1e12 ? (b / 1e12).toFixed(1) + " TB" : b >= 1e9 ? (b / 1e9).toFixed(0) + " GB" : b >= 1e6 ? (b / 1e6).toFixed(0) + " MB" : b ? "<1 MB" : "";
+const DAY = 86400000;
+const toUTC = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
+const isoOf = t => new Date(t).toISOString().slice(0, 10);
+const fmtDay = (iso, opts = {day: "numeric", month: "short"}) => new Date(toUTC(iso)).toLocaleDateString(undefined, {timeZone: "UTC", ...opts});
+const daysBetween = (a, b) => Math.round((toUTC(b) - toUTC(a)) / DAY);
+
+const state = {accounts: [], options: {images: true}, account: null, snaps: [], snap: null, hist: null,
+               range: 30, sort: {key: "minutes", dir: -1}, q: "", col: "", installed: false, hidden: false, limit: 50};
+
+function store(k, v) { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+async function api(path) {
+  const r = await fetch(path, {cache: "no-store"});
+  if (!r.ok) throw new Error(path + " -> HTTP " + r.status);
+  return r.json();
+}
+
+function img(appid, cls = "thumb") {
+  if (!state.options.images) return "";
+  const a = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/capsule_231x87.jpg`;
+  const b = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/capsule_231x87.jpg`;
+  return `<img class="${cls}" loading="lazy" alt="" src="${a}" data-alt="${b}" onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=''}else{this.style.visibility='hidden'}">`;
+}
+const storeUrl = appid => `https://store.steampowered.com/app/${appid}/`;
+
+// ---------- theme ----------
+(function theme() {
+  const t = stored("ssTheme");
+  if (t) document.documentElement.dataset.theme = t;
+  $("#theme").onclick = () => {
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    store("ssTheme", next);
+  };
+})();
+
+// ---------- loading ----------
+async function boot() {
+  let res;
+  try { res = await api("/api/accounts"); }
+  catch (e) { $("#main").innerHTML = `<p class="empty">Cannot reach the steam-snapshot server (${esc(e.message)}).</p>`; return; }
+  state.accounts = res.accounts; state.options = res.options || state.options;
+  $("#foot").innerHTML = `steam-snapshot ${esc(res.version)} · data stays on this machine`;
+  if (!state.accounts.length) {
+    $("#main").innerHTML = `<div class="card"><h2>No snapshots yet</h2><p class="empty">Take the first one with
+      <code>python -m steam_snapshot snapshot</code>, then reload. To look around first, run
+      <code>python -m steam_snapshot demo</code>.</p></div>`;
+    return;
+  }
+  const sel = $("#account");
+  if (state.accounts.length > 1) {
+    sel.hidden = false;
+    sel.innerHTML = state.accounts.map(a => `<option value="${esc(a.steamid64)}">${esc(a.persona || a.steamid64)}</option>`).join("");
+    sel.onchange = () => { store("ssAccount", sel.value); loadAccount(sel.value); };
+  }
+  const want = stored("ssAccount");
+  const acct = state.accounts.find(a => a.steamid64 === want) || state.accounts[0];
+  sel.value = acct.steamid64;
+  await loadAccount(acct.steamid64);
+}
+
+async function loadAccount(id) {
+  state.account = id;
+  [state.snaps, state.hist] = await Promise.all([api(`/api/snapshots?account=${id}`), api(`/api/history?account=${id}`)]);
+  const day = $("#day");
+  day.innerHTML = state.snaps.slice().reverse().map((s, i) =>
+    `<option value="${s.date}">${fmtDay(s.date, {day: "numeric", month: "short", year: "numeric"})}${i === 0 ? " (latest)" : ""}</option>`).join("");
+  day.onchange = () => loadSnap(day.value);
+  await loadSnap(state.snaps[state.snaps.length - 1].date);
+}
+
+async function loadSnap(date) {
+  state.snap = await api(`/api/snapshot?account=${state.account}&date=${date}`);
+  $("#day").value = date;
+  render();
+}
+
+// ---------- derived data ----------
+function visibleGames(snap) {
+  return (snap.games || []).filter(g => state.hidden || !g.hidden);
+}
+function histWindow(endIso, days) {
+  const out = [];
+  const end = toUTC(endIso);
+  for (let i = days - 1; i >= 0; i--) {
+    const iso = isoOf(end - i * DAY);
+    const rec = state.hist.days[iso];
+    const tracked = state.hist.since && iso >= state.hist.since;
+    out.push({iso, tracked, mins: rec ? Object.values(rec).reduce((a, b) => a + b, 0) : 0, apps: rec || {}});
+  }
+  return out;
+}
+
+// ---------- render ----------
+function render() {
+  const snap = state.snap;
+  const acct = snap.account || {};
+  $("#who").innerHTML = esc(acct.persona || "") + (snap.demo ? ` <span class="chip">demo data</span>` : "");
+  const t = new Date(snap.taken);
+  $("#taken").textContent = isNaN(t) ? "" : "taken " + t.toLocaleTimeString(undefined, {hour: "2-digit", minute: "2-digit"});
+
+  const games = visibleGames(snap);
+  const names = Object.fromEntries((snap.games || []).map(g => [g.appid, g.name]));
+  const totalMin = games.reduce((a, g) => a + (g.minutes || 0), 0);
+  const prevGames = snap.previous ? snap.previous.games.filter(g => state.hidden || !g.hidden) : null;
+  const prevMin = prevGames ? prevGames.reduce((a, g) => a + (g.minutes || 0), 0) : null;
+  const inst = games.filter(g => g.installed);
+  const last30 = histWindow(snap.date, 30);
+  const prev30 = histWindow(isoOf(toUTC(snap.date) - 30 * DAY), 30);
+  const m30 = last30.reduce((a, d) => a + d.mins, 0);
+  const p30 = prev30.reduce((a, d) => a + d.mins, 0);
+  const p30tracked = prev30.every(d => d.tracked);
+  const never = games.filter(g => !g.minutes).length;
+
+  const tile = (label, value, delta = "", up = false) =>
+    `<div class="tile"><div class="label">${label}</div><div class="value">${value}</div>${delta ? `<div class="delta${up ? " up" : ""}">${delta}</div>` : ""}</div>`;
+  let deltaTotal = "";
+  if (prevMin !== null) {
+    const d = totalMin - prevMin;
+    deltaTotal = d > 0 ? `+${fmtH(d)} h since ${fmtDay(snap.previous.date)}` : `no change since ${fmtDay(snap.previous.date)}`;
+  }
+  let delta30 = state.hist.since && state.hist.since > last30[0].iso ? `recording since ${fmtDay(state.hist.since)}` : "";
+  if (!delta30 && p30tracked) delta30 = `${fmtH(p30)} h the 30 days before`;
+
+  const html = [];
+  html.push(`<section class="tiles">
+    ${tile("Games", games.length.toLocaleString(), prevGames ? signed(games.length - prevGames.length, "since " + fmtDay(snap.previous.date)) : "")}
+    ${tile("Total playtime", fmtH(totalMin) + " h", deltaTotal, prevMin !== null && totalMin > prevMin)}
+    ${tile("Last 30 days", fmtH(m30) + " h", delta30)}
+    ${tile("Installed", inst.length.toLocaleString(), fmtBytes(inst.reduce((a, g) => a + (g.bytes || 0), 0)) + " on disk")}
+    ${tile("Never played", never.toLocaleString(), games.length ? Math.round(never / games.length * 100) + "% of the library" : "")}
+  </section>`);
+
+  html.push(`<section class="grid">
+    <div class="card">
+      <div class="card-head"><div><h2>Playtime per day</h2><div class="sub" id="chart-sub"></div></div><span class="spacer"></span>
+        <div class="seg" role="group" aria-label="Range">${[30, 90].map(r => `<button data-range="${r}" aria-pressed="${state.range === r}">${r} days</button>`).join("")}</div></div>
+      <div id="chart"></div>
+      <details class="table-view"><summary>Show as a table</summary><div id="chart-table"></div></details>
+    </div>
+    <div class="card"><div class="card-head"><div><h2>Played lately</h2><div class="sub">last 30 days, most hours first</div></div></div>${lately(last30, names)}</div>
+  </section>`);
+
+  html.push(`<section class="grid even">
+    <div class="card changes"><div class="card-head"><div><h2>Changes</h2><div class="sub">${snap.previous ? "compared with the snapshot of " + fmtDay(snap.previous.date, {weekday: "short", day: "numeric", month: "short"}) : "the first snapshot - changes show from the next one"}</div></div></div>${changes(games, prevGames)}</div>
+    <div class="card"><div class="card-head"><div><h2>Collections</h2><div class="sub">hours per Steam collection</div></div></div>${collections(games)}</div>
+  </section>`);
+
+  if (snap.wishlistStatus && snap.wishlistStatus !== "off") html.push(wishlist(snap));
+  html.push(library(games));
+  $("#main").innerHTML = html.join("");
+
+  document.querySelectorAll("[data-range]").forEach(b => b.onclick = () => { state.range = +b.dataset.range; render(); });
+  drawChart(histWindow(snap.date, state.range), names);
+  wireLibrary();
+  renderRows();
+
+  const notes = [];
+  const src = snap.sources || {};
+  if (src.packageinfo === false) notes.push("licence list unreadable - refunded games are not filtered out");
+  if (src.collections === false) notes.push("no Steam collections found");
+  (snap.notes || []).forEach(n => notes.push(n));
+  if (notes.length) $("#foot").insertAdjacentHTML("beforeend", "<br>" + notes.map(esc).join(" · "));
+}
+
+function signed(n, suffix) { return n > 0 ? `+${n} ${suffix}` : n < 0 ? `${n} ${suffix}` : `no change ${suffix}`; }
+
+function lately(days, names) {
+  const tot = {};
+  days.forEach(d => Object.entries(d.apps).forEach(([a, m]) => tot[a] = (tot[a] || 0) + m));
+  const top = Object.entries(tot).sort((a, b) => b[1] - a[1]).slice(0, 7);
+  if (!top.length) return `<p class="empty">Nothing recorded in the last 30 days yet. Playtime is tracked between snapshots, so it fills in as the scheduled job runs.</p>`;
+  return `<ul class="list">${top.map(([a, m]) => `<li>${img(a)}<span class="name"><a href="${storeUrl(a)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(names[a] || "App " + a)}</a></span><span class="num">${fmtH(m)} h</span></li>`).join("")}</ul>`;
+}
+
+function changes(games, prevGames) {
+  if (!prevGames) return `<p class="empty">Nothing to compare yet.</p>`;
+  const before = Object.fromEntries(prevGames.map(g => [g.appid, g]));
+  const now = Object.fromEntries(games.map(g => [g.appid, g]));
+  const gained = games.filter(g => before[g.appid] && g.minutes > before[g.appid].minutes)
+    .map(g => [g, g.minutes - before[g.appid].minutes]).sort((a, b) => b[1] - a[1]);
+  const added = games.filter(g => !before[g.appid]);
+  const gone = prevGames.filter(g => !now[g.appid]);
+  if (!gained.length && !added.length && !gone.length) return `<p class="empty">No changes between these two snapshots.</p>`;
+  const out = [];
+  if (gained.length) out.push(`<h3>Played</h3><ul class="list">${gained.slice(0, 6).map(([g, d]) => `<li>${img(g.appid)}<span class="name">${esc(g.name)}</span><span class="plus">+${fmtH(d)} h</span></li>`).join("")}</ul>${gained.length > 6 ? `<div class="sub">and ${gained.length - 6} more</div>` : ""}`);
+  if (added.length) out.push(`<h3>New in the library</h3><ul class="list">${added.slice(0, 6).map(g => `<li>${img(g.appid)}<span class="name">${esc(g.name)}</span></li>`).join("")}</ul>`);
+  if (gone.length) out.push(`<h3>No longer in the library</h3><ul class="list">${gone.slice(0, 6).map(g => `<li>${img(g.appid)}<span class="name">${esc(g.name)}</span></li>`).join("")}</ul>`);
+  return out.join("");
+}
+
+function collections(games) {
+  const by = {};
+  games.forEach(g => {
+    const cols = g.collections && g.collections.length ? g.collections : [g.type === "demo" ? "Demos" : "Not in a collection"];
+    cols.forEach(c => { by[c] = by[c] || {mins: 0, n: 0}; by[c].mins += g.minutes || 0; by[c].n++; });
+  });
+  const rows = Object.entries(by).sort((a, b) => b[1].mins - a[1].mins);
+  if (!rows.length) return `<p class="empty">No games.</p>`;
+  const max = Math.max(...rows.map(r => r[1].mins), 1);
+  return `<div class="bars">${rows.slice(0, 10).map(([c, v]) => `<div class="bar-row" title="${esc(c)}: ${fmtH(v.mins)} h over ${v.n} games">
+    <span class="bar-label">${esc(c)}</span><span class="bar-track"><span class="bar-fill" style="width:${(v.mins / max * 100).toFixed(1)}%"></span></span>
+    <span class="bar-val">${fmtH(v.mins)} h · ${v.n}</span></div>`).join("")}</div>${rows.length > 10 ? `<div class="sub">${rows.length - 10} smaller collections not shown</div>` : ""}
+    ${games.some(g => g.collections && g.collections.length > 1) ? `<div class="sub" style="margin-top:6px">A game in several collections counts in each.</div>` : ""}`;
+}
+
+function wishlist(snap) {
+  const wl = snap.wishlist || [];
+  const today = snap.date;
+  const soon = wl.filter(w => w.comingSoon).sort((a, b) =>
+    (a.releaseISO || "9999") < (b.releaseISO || "9999") ? -1 : (a.releaseISO || "9999") > (b.releaseISO || "9999") ? 1 : a.name.localeCompare(b.name));
+  const out = wl.filter(w => !w.comingSoon);
+  const hint = snap.wishlistStatus === "private" ? `<p class="empty">Steam would not share the wishlist. Set your profile's <b>Game details</b> to Public (Steam &gt; Edit Profile &gt; Privacy Settings).</p>`
+    : snap.wishlistStatus === "error" ? `<p class="empty">The wishlist could not be fetched at this snapshot; showing the last list that was.</p>` : "";
+  const card = w => {
+    let when = esc(w.release || "");
+    if (w.comingSoon && w.releaseISO) {
+      const n = daysBetween(today, w.releaseISO);
+      when = `${esc(fmtDay(w.releaseISO, {day: "numeric", month: "short", year: "numeric"}))} <span class="chip">${n <= 0 ? "out now" : n === 1 ? "tomorrow" : "in " + n + " days"}</span>`;
+    }
+    return `<div class="w">${img(w.appid)}<div class="t"><div class="n"><a href="${storeUrl(w.appid)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(w.name)}</a></div><div class="d">${when || "&nbsp;"}</div></div></div>`;
+  };
+  return `<section class="card" style="margin-bottom:12px"><div class="card-head"><div><h2>Wishlist</h2><div class="sub">${wl.length} games · ${soon.length} not out yet</div></div></div>
+    ${hint}${soon.length ? `<div class="wish">${soon.map(card).join("")}</div>` : ""}
+    ${out.length ? `<details class="more"><summary class="muted">${out.length} already released</summary><div class="wish" style="margin-top:8px">${out.map(card).join("")}</div></details>` : ""}
+  </section>`;
+}
+
+// ---------- chart ----------
+function niceStep(max) {
+  for (const s of [0.5, 1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 100]) if (max / s <= 4) return s;
+  return Math.ceil(max / 4);
+}
+function drawChart(days, names) {
+  const el = $("#chart");
+  const W = el.clientWidth || 600, H = 220, L = 34, R = 4, T = 8, B = 24;
+  const hours = days.map(d => d.mins / 60);
+  const maxH = Math.max(...hours, 1);
+  const step = niceStep(maxH);
+  const top = Math.ceil(maxH / step) * step;
+  const y = h => T + (H - T - B) * (1 - h / top);
+  const slot = (W - L - R) / days.length;
+  const bw = Math.max(2, Math.min(24, slot - 2));
+  const r = Math.min(4, bw / 2);
+  const parts = [];
+  for (let v = 0; v <= top + 1e-9; v += step) {
+    parts.push(`<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${v ? "var(--grid)" : "var(--axis)"}" stroke-width="1"/>`);
+    parts.push(`<text class="tick" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}h</text>`);
+  }
+  // days before the first snapshot are unknown, not zero: shade them
+  const firstTracked = days.findIndex(d => d.tracked);
+  const untracked = firstTracked === -1 ? days.length : firstTracked;
+  if (untracked > 0) {
+    const w = untracked * slot;
+    parts.unshift(`<rect x="${L}" y="${T}" width="${w}" height="${H - T - B}" fill="var(--surface-2)"/>` +
+      (w > 90 ? `<text class="tick" x="${L + w / 2}" y="${T + (H - T - B) / 2}" text-anchor="middle">not recorded yet</text>` : ""));
+  }
+  const every = days.length <= 31 ? 7 : 14;
+  days.forEach((d, i) => {
+    const x = L + i * slot + (slot - bw) / 2;
+    const h = hours[i];
+    if (h > 0) {
+      const y0 = y(0), y1 = Math.min(y(h), y0 - 1), rr = Math.min(r, y0 - y1);
+      parts.push(`<path d="M${x},${y0} V${y1 + rr} Q${x},${y1} ${x + rr},${y1} H${x + bw - rr} Q${x + bw},${y1} ${x + bw},${y1 + rr} V${y0} Z" fill="var(--accent)"/>`);
+    }
+    if ((days.length - 1 - i) % every === 0)
+      parts.push(`<text class="tick" x="${L + i * slot + slot / 2}" y="${H - 6}" text-anchor="middle">${esc(fmtDay(d.iso))}</text>`);
+    parts.push(`<rect data-i="${i}" x="${L + i * slot}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent"/>`);
+  });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Hours played per day">${parts.join("")}</svg><div class="tip" hidden></div>`;
+  const total = hours.reduce((a, b) => a + b, 0);
+  const active = hours.filter(h => h > 0).length;
+  $("#chart-sub").textContent = `${fmtH(total * 60)} h over ${active} day${active === 1 ? "" : "s"} played, last ${days.length} days`;
+  const tip = $(".tip", el);
+  el.querySelector("svg").addEventListener("mousemove", ev => {
+    const i = ev.target.dataset && ev.target.dataset.i;
+    if (i === undefined) { tip.hidden = true; return; }
+    const d = days[+i];
+    const games = Object.entries(d.apps).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    tip.innerHTML = `<b>${esc(fmtDay(d.iso, {weekday: "short", day: "numeric", month: "short"}))} · ${fmtH(d.mins)} h</b>` +
+      (d.tracked ? games.map(([a, m]) => `<div class="row"><span>${esc(names[a] || "App " + a)}</span><span>${fmtH(m)} h</span></div>`).join("") || `<div class="row">nothing played</div>`
+                 : `<div class="row">before recording started</div>`);
+    tip.hidden = false;
+    const box = el.getBoundingClientRect();
+    const px = ev.clientX - box.left, py = ev.clientY - box.top;
+    tip.style.left = Math.min(Math.max(0, px + 12), box.width - tip.offsetWidth) + "px";
+    tip.style.top = Math.max(0, py - tip.offsetHeight - 10) + "px";
+  });
+  el.querySelector("svg").addEventListener("mouseleave", () => tip.hidden = true);
+  $("#chart-table").innerHTML = `<table><thead><tr><th>Day</th><th class="num">Hours</th></tr></thead><tbody>${days.slice().reverse().filter(d => d.tracked).map(d => `<tr><td>${esc(fmtDay(d.iso, {weekday: "short", day: "numeric", month: "short"}))}</td><td class="num">${fmtH(d.mins)}</td></tr>`).join("")}</tbody></table>`;
+}
+let resizeTimer;
+addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => state.snap && $("#chart") && drawChart(histWindow(state.snap.date, state.range), Object.fromEntries(state.snap.games.map(g => [g.appid, g.name]))), 150); });
+
+// ---------- library table ----------
+function library(games) {
+  const cols = [...new Set(games.flatMap(g => g.collections || []))].sort((a, b) => a.localeCompare(b));
+  const hasHidden = (state.snap.games || []).some(g => g.hidden);
+  return `<section class="card"><div class="card-head"><div><h2>Library</h2><div class="sub" id="lib-count"></div></div></div>
+    <div class="lib-tools">
+      <input type="search" id="q" placeholder="Search games" value="${esc(state.q)}" aria-label="Search games">
+      <select id="col" aria-label="Collection"><option value="">All collections</option>${cols.map(c => `<option${c === state.col ? " selected" : ""}>${esc(c)}</option>`).join("")}<option value="\u0000none"${state.col === "\u0000none" ? " selected" : ""}>Not in a collection</option></select>
+      <label><input type="checkbox" id="inst"${state.installed ? " checked" : ""}> installed</label>
+      ${hasHidden ? `<label><input type="checkbox" id="hid"${state.hidden ? " checked" : ""}> show hidden</label>` : ""}
+    </div>
+    <div style="overflow-x:auto"><table><thead><tr>
+      <th data-sort="name">Game<span class="arrow"></span></th>
+      <th data-sort="minutes" class="num">Hours<span class="arrow"></span></th>
+      <th data-sort="lastPlayed" class="num">Last played<span class="arrow"></span></th>
+      <th class="col-col">Collection</th>
+      <th data-sort="bytes" class="num col-size">Size<span class="arrow"></span></th>
+    </tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="more" id="lib-more"></div></section>`;
+}
+function wireLibrary() {
+  $("#q").oninput = e => { state.q = e.target.value; state.limit = 50; renderRows(); };
+  $("#col").onchange = e => { state.col = e.target.value; state.limit = 50; renderRows(); };
+  $("#inst").onchange = e => { state.installed = e.target.checked; renderRows(); };
+  const hid = $("#hid");
+  if (hid) hid.onchange = e => { state.hidden = e.target.checked; render(); };
+  document.querySelectorAll("th[data-sort]").forEach(th => th.onclick = () => {
+    const k = th.dataset.sort;
+    state.sort = state.sort.key === k ? {key: k, dir: -state.sort.dir} : {key: k, dir: k === "name" ? 1 : -1};
+    renderRows();
+  });
+}
+function renderRows() {
+  const q = state.q.trim().toLowerCase();
+  let rows = visibleGames(state.snap).filter(g =>
+    (!q || g.name.toLowerCase().includes(q)) &&
+    (!state.installed || g.installed) &&
+    (!state.col || (state.col === "\u0000none" ? !(g.collections || []).length : (g.collections || []).includes(state.col))));
+  const {key, dir} = state.sort;
+  rows.sort((a, b) => key === "name" ? dir * a.name.localeCompare(b.name) : dir * ((a[key] || 0) - (b[key] || 0)) || a.name.localeCompare(b.name));
+  document.querySelectorAll("th[data-sort] .arrow").forEach(s => s.textContent = s.parentElement.dataset.sort === key ? (dir > 0 ? "↑" : "↓") : "");
+  $("#lib-count").textContent = `${rows.length} of ${visibleGames(state.snap).length} games`;
+  const shown = rows.slice(0, state.limit);
+  $("#rows").innerHTML = shown.map(g => {
+    const tags = [g.favourite ? "favourite" : "", g.type === "demo" ? "demo" : "", g.hidden ? "hidden" : "", g.owned === false ? "not owned" : ""].filter(Boolean);
+    const lp = g.lastPlayed ? new Date(g.lastPlayed * 1000).toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"}) : "never";
+    return `<tr><td class="game">${img(g.appid)}<span><a href="${storeUrl(g.appid)}" target="_blank" rel="noopener">${esc(g.name)}</a>${tags.map(t => `<span class="tag">${t}</span>`).join("")}</span></td>
+      <td class="num">${g.minutes ? fmtH(g.minutes) : "<span class='muted'>-</span>"}</td>
+      <td class="num muted">${lp}</td>
+      <td class="col-col muted">${esc((g.collections || []).join(", "))}</td>
+      <td class="num col-size muted">${g.installed ? fmtBytes(g.bytes) : ""}</td></tr>`;
+  }).join("") || `<tr><td colspan="5" class="empty">No games match.</td></tr>`;
+  $("#lib-more").innerHTML = rows.length > shown.length ? `<button id="show-more">Show all ${rows.length}</button>` : "";
+  const more = $("#show-more");
+  if (more) more.onclick = () => { state.limit = Infinity; renderRows(); };
+}
+
+boot().catch(e => { $("#main").innerHTML = `<p class="empty">Something went wrong: ${esc(e.message)}</p>`; });
+</script>
+</body>
+</html>

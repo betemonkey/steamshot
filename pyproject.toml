@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "steam-snapshot"
+version = "1.0.0"
+description = "Scheduled snapshots of your Steam library, read from Steam's own files, plus a small local dashboard."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+steam-snapshot = "steam_snapshot.cli:main"
+
+[tool.setuptools]
+packages = ["steam_snapshot"]
+
+[tool.setuptools.package-data]
+steam_snapshot = ["web/*.html"]

@@ -1,0 +1,57 @@
+# steam-snapshot configuration
+#
+# Copy this file to config.toml (or run `python -m steam_snapshot init`) and
+# change what you need. Every key is optional: a missing key keeps the default
+# shown here. Check the result with `python -m steam_snapshot doctor`.
+
+[steam]
+# The Steam install folder. "auto" looks in the usual places:
+#   Windows  the registry, then C:\Program Files (x86)\Steam
+#   Linux    ~/.steam/steam, ~/.local/share/Steam, Flatpak and Snap installs
+#   macOS    ~/Library/Application Support/Steam
+path = "auto"
+
+# Which account to snapshot when more than one has logged in on this machine.
+# "auto" = whoever used Steam most recently. Otherwise your SteamID64
+# (17 digits, starting 7656119...) or the short account id from
+# Steam\userdata\<id>. `doctor` lists the accounts it can see.
+account = "auto"
+
+[snapshot]
+# Where snapshots are stored. A relative path is relative to this file.
+data_dir = "data"
+
+# Keep one snapshot per day for this many days; 0 keeps everything.
+# A day is roughly 20-60 KB, so a year is a few MB.
+keep_days = 365
+
+# Games the licence list says you no longer own (refunds, expired free
+# weekends) still carry their old playtime. They are left out unless true.
+include_unowned = false
+
+# App ids to always leave out, e.g. a Steam Family shared game you don't want
+# counted as yours. The app id is the number in the game's store URL.
+hide_appids = []
+
+[online]
+# Keyless calls to Steam's public store API: names for games missing from
+# Steam's local cache, and your wishlist with release dates. Only app ids and
+# your SteamID64 are sent. false = the tool never touches the network.
+enabled = true
+
+# Read your wishlist. Needs your profile's "Game details" privacy setting on
+# Public (Steam > Edit Profile > Privacy Settings).
+wishlist = true
+
+# Store region and language for names and release dates.
+country = "US"
+language = "english"
+
+[dashboard]
+# 127.0.0.1 keeps the dashboard on this computer. Use "0.0.0.0" to open it to
+# your local network - anyone on it can then see your library.
+host = "127.0.0.1"
+port = 8765
+
+# Show cover art (loaded by your browser straight from Steam's image CDN).
+images = true

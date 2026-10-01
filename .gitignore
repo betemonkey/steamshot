@@ -1,0 +1,9 @@
+# your own settings and data - never commit these
+config.toml
+data/
+demo-data/
+
+__pycache__/
+*.pyc
+*.tmp
+.venv/
