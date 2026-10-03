@@ -165,6 +165,10 @@ git pull
 
 Your `config.toml` and `data/` folder are never touched by an update.
 
+Snapshots and history are now kept forever by default. If you created your `config.toml`
+with `init` before that change, it still says `keep_days = 365`, which deletes anything
+older than a year. Set it to `0` (or remove the line) to keep everything.
+
 ### Moving to a new PC, or using several
 
 Your history lives in the `data/` folder. To move to a new PC, set it up there (steps 1-7)
@@ -183,7 +187,7 @@ data in `./data`.
 | `[steam]` | `path` | `"auto"` | Steam install folder. Auto-detects Windows, Linux (native, Flatpak, Snap) and macOS installs. |
 | | `account` | `"auto"` | Which account to snapshot if several logged in here. `auto` = most recently used; otherwise a SteamID64 or the account id from `Steam/userdata/<id>`. |
 | `[snapshot]` | `data_dir` | `"data"` | Where snapshots go. Relative to the config file. |
-| | `keep_days` | `365` | Days of snapshots and history to keep. `0` keeps everything. |
+| | `keep_days` | `0` | Days of snapshots and history to keep. `0` keeps everything, forever. |
 | | `include_unowned` | `false` | Keep refunded or expired games that still carry old playtime. |
 | | `hide_appids` | `[]` | App ids to always leave out. |
 | `[online]` | `enabled` | `true` | Allow keyless calls to Steam's public store API. `false` = no network at all. |

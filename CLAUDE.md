@@ -5,7 +5,7 @@ Steamshot (`steam_snapshot` package) takes scheduled snapshots of a Steam librar
 ## Commands (Windows dev box: use `py -3`, not `python`)
 
 ```powershell
-py -3 -m unittest discover tests                          # full suite, offline, ~1s (verified: 20 tests)
+py -3 -m unittest discover tests                          # full suite, offline, ~1s (verified: 21 tests)
 py -3 -m unittest tests.test_steam_snapshot.ConfigTests   # one class (verified)
 py -3 -m steam_snapshot demo --open                       # invented data in ./demo-data + dashboard on :8765
 py -3 -m steam_snapshot demo --no-serve --data-dir <dir>  # just generate demo data (verified)

@@ -16,7 +16,7 @@ DEFAULTS = {
     },
     "snapshot": {
         "data_dir": "data",
-        "keep_days": 365,
+        "keep_days": 0,
         "include_unowned": False,
         "hide_appids": [],
     },

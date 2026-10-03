@@ -161,6 +161,20 @@ class SnapshotTests(TempDir):
         snapshot.take(self.cfg, now=datetime(2026, 3, 7, 12))
         self.assertEqual(snapshot.snapshot_dates(self.acct_dir()), ["2026-03-07"])
 
+    def test_default_keeps_everything(self):
+        self.cfg["snapshot"]["keep_days"] = config.DEFAULTS["snapshot"]["keep_days"]
+        lc = os.path.join(self.root, "userdata", str(fixtures.ACCOUNT), "config", "localconfig.vdf")
+        snapshot.take(self.cfg, now=datetime(2024, 3, 1, 12))
+        text = steamfiles.read_text(lc)
+        with open(lc, "w", encoding="utf-8") as fh:
+            fh.write(text.replace('"Playtime"\t\t"600"', '"Playtime"\t\t"660"'))
+        snapshot.take(self.cfg, now=datetime(2024, 3, 2, 12))
+        snapshot.take(self.cfg, now=datetime(2026, 3, 1, 12))
+        self.assertEqual(snapshot.snapshot_dates(self.acct_dir()),
+                         ["2024-03-01", "2024-03-02", "2026-03-01"])
+        hist = snapshot.read_json(os.path.join(self.acct_dir(), "history.json"))
+        self.assertIn("2024-03-02", hist["days"])
+
     def test_same_day_replaces(self):
         snapshot.take(self.cfg, now=datetime(2026, 3, 1, 9))
         snapshot.take(self.cfg, now=datetime(2026, 3, 1, 21))

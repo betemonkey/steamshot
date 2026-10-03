@@ -21,9 +21,9 @@ account = "auto"
 # Where snapshots are stored. A relative path is relative to this file.
 data_dir = "data"
 
-# Keep one snapshot per day for this many days; 0 keeps everything.
+# Keep one snapshot per day for this many days. 0 (the default) keeps everything.
 # A day is roughly 20-60 KB, so a year is a few MB.
-keep_days = 365
+keep_days = 0
 
 # Games the licence list says you no longer own (refunds, expired free
 # weekends) still carry their old playtime. They are left out unless true.
