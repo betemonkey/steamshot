@@ -55,3 +55,13 @@ port = 8765
 
 # Show cover art (loaded by your browser straight from Steam's image CDN).
 images = true
+
+[updates]
+# Every 6 hours, look up the newest version on GitHub (one plain download of a
+# version number, nothing about you is sent). Skipped when [online] enabled = false.
+check = true
+
+# Install new versions by itself with `git pull`, and reload an open dashboard.
+# Only done for a clean git checkout of main; otherwise the dashboard shows a
+# banner and you update by hand. false = banner only.
+auto = true

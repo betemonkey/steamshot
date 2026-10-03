@@ -3,13 +3,27 @@ import argparse
 import os
 import shlex
 import shutil
+import subprocess
 import sys
+import threading
 import webbrowser
+import time
 from datetime import datetime
 
 from . import __version__, config, snapshot, steamfiles
 
 TASK_NAME = "steam-snapshot"
+WATCH_EVERY = 60  # seconds between the dashboard's looks for an update
+
+
+def check_updates(cfg):
+    """Look for (and maybe install) a new version. Never fails the caller."""
+    from . import update
+    try:
+        return update.run(cfg)
+    except Exception as e:
+        snapshot.log_line(cfg["data_dir"], f"update check crashed: {e}")
+        return {}
 
 
 def cmd_snapshot(cfg, args):
@@ -18,7 +32,10 @@ def cmd_snapshot(cfg, args):
     except snapshot.SnapshotError as e:
         snapshot.log_line(cfg["data_dir"], f"FAILED: {e}")
         print(f"snapshot failed: {e}", file=sys.stderr)
+        check_updates(cfg)  # an update may be the fix
         return 1
+    if check_updates(cfg).get("status") == "updated":
+        print("  updated steam-snapshot; the next run uses the new version")
     print(f"snapshot saved: {s['games']} games, {s['hours']:,} h, "
           f"wishlist {s['wishlist']} ({s['wishlistStatus']})")
     print(f"  -> {s['path']}")
@@ -34,7 +51,7 @@ def cmd_serve(cfg, args):
     host = args.host or dash["host"]
     port = args.port or dash["port"]
     try:
-        httpd = make_server(data_dir, host, port, {"images": bool(dash["images"])})
+        httpd = make_server(data_dir, host, port, {"images": bool(dash["images"])}, cfg=cfg)
     except OSError as e:
         print(f"cannot listen on {host}:{port}: {e}", file=sys.stderr)
         return 1
@@ -45,12 +62,58 @@ def cmd_serve(cfg, args):
     print("  Ctrl+C to stop")
     if args.open:
         webbrowser.open(url)
+    restart = threading.Event()
+    threading.Thread(target=watch_for_update, args=(cfg, httpd, restart), daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         httpd.server_close()
+    if restart.is_set():
+        return relaunch()
+    return 0
+
+
+def watch_for_update(cfg, httpd, restart):
+    """Check for updates now and then; once new code is on disk (pulled here
+    or by the scheduled snapshot), stop the server so it can restart on it."""
+    from . import update
+    while True:
+        check_updates(cfg)
+        on_disk = update.disk_version()
+        if on_disk and on_disk != __version__:
+            restart.set()
+            say(f"steam-snapshot {on_disk} is installed - restarting the dashboard")
+            httpd.shutdown()
+            return
+        time.sleep(WATCH_EVERY)
+
+
+def say(text):
+    """print() that cannot fail: a relaunched server may have inherited an
+    output pipe that has since closed."""
+    try:
+        print(text, flush=True)
+    except (OSError, ValueError):
+        pass
+
+
+def relaunch():
+    """Start this same command again on the updated code, without --open (the
+    browser tab is already there and reloads itself)."""
+    argv = [sys.executable, "-m", "steam_snapshot", *(a for a in sys.argv[1:] if a != "--open")]
+    if sys.platform != "win32":
+        os.execv(sys.executable, argv)
+    # os.execv is unreliable on Windows, so start a new process. It keeps the
+    # terminal if there is one; a pipe would close when this process exits.
+    try:
+        console = bool(sys.stdout and sys.stdout.isatty())
+    except (OSError, ValueError):
+        console = False
+    quiet = {} if console else {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL,
+                                "stderr": subprocess.DEVNULL}
+    subprocess.Popen(argv, **quiet)
     return 0
 
 
@@ -106,6 +169,14 @@ def cmd_doctor(cfg, args):
             print(f"  Wishlist     check failed: {e}")
     dates = snapshot.snapshot_dates(snapshot.account_dir(cfg["data_dir"], chosen["steamid64"]))
     print(f"  Snapshots    {len(dates)} stored" + (f", latest {dates[-1]}" if dates else ""))
+    from . import update
+    u = update.status(cfg)
+    if u["status"] == "off":
+        print("  Updates      not checked ([updates] check = false or [online] enabled = false)")
+    else:
+        print(f"  Updates      {'installed automatically' if u['auto'] else 'banner only'}; "
+              + (f"{u['latest']} available" + (f" ({u['reason']})" if u["reason"] else "")
+                 if u["available"] else f"last check: {u['status']}"))
     return 0
 
 

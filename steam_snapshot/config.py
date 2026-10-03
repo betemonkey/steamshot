@@ -31,6 +31,10 @@ DEFAULTS = {
         "port": 8765,
         "images": True,
     },
+    "updates": {
+        "check": True,
+        "auto": True,
+    },
 }
 
 

@@ -12,7 +12,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from steam_snapshot import config, demo, snapshot, steamfiles  # noqa: E402
+from steam_snapshot import __version__, config, demo, snapshot, steamfiles, update  # noqa: E402
 from steam_snapshot.server import make_server  # noqa: E402
 from tests import fixtures  # noqa: E402
 
@@ -207,6 +207,75 @@ class ConfigTests(TempDir):
         self.assertEqual(cfg["steam"]["account"], "auto")
 
 
+class UpdateTests(TempDir):
+    def setUp(self):
+        super().setUp()
+        self.fetched, self.pulled = 0, 0
+
+    def cfg(self, extra=""):
+        path = os.path.join(self.tmp, "c.toml")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("[snapshot]\ndata_dir = 'data'\n" + extra)
+        return config.load(path)
+
+    def fetch(self, version="99.0.0"):
+        def f():
+            self.fetched += 1
+            return version
+        return f
+
+    def pull(self, ok=True, reason=""):
+        def p():
+            self.pulled += 1
+            return ok, reason
+        return p
+
+    def test_version_order(self):
+        self.assertTrue(update.newer("1.10.0", "1.9.2"))
+        self.assertFalse(update.newer("1.1.0", "1.1.0"))
+        self.assertFalse(update.newer("garbage", "1.0.0"))
+        self.assertEqual(update.disk_version(), __version__)
+
+    def test_offline_never_checks(self):
+        for extra in ("[online]\nenabled = false\n", "[updates]\ncheck = false\n"):
+            cfg = self.cfg(extra)
+            update.run(cfg, fetch=self.fetch(), pull=self.pull())
+            self.assertEqual(update.status(cfg)["status"], "off")
+        self.assertEqual((self.fetched, self.pulled), (0, 0))
+
+    def test_auto_update_is_throttled(self):
+        cfg = self.cfg()
+        self.assertEqual(update.run(cfg, now=1000, fetch=self.fetch(), pull=self.pull())["status"], "updated")
+        update.run(cfg, now=2000, fetch=self.fetch(), pull=self.pull())
+        self.assertEqual((self.fetched, self.pulled), (1, 1))
+        update.run(cfg, now=1000 + update.CHECK_EVERY, fetch=self.fetch(), pull=self.pull())
+        self.assertEqual(self.fetched, 2)
+        self.assertIn("updated", steamfiles.read_text(os.path.join(cfg["data_dir"], snapshot.LOG_NAME)))
+
+    def test_cannot_pull_shows_banner(self):
+        cfg = self.cfg()
+        update.run(cfg, now=1000, fetch=self.fetch(), pull=self.pull(False, "the folder has local changes"))
+        st = update.status(cfg)
+        self.assertEqual((st["available"], st["status"], st["latest"]), (True, "manual", "99.0.0"))
+        self.assertIn("local changes", st["reason"])
+
+    def test_auto_off_and_up_to_date_never_pull(self):
+        cfg = self.cfg("[updates]\nauto = false\n")
+        self.assertEqual(update.run(cfg, now=1000, fetch=self.fetch(), pull=self.pull())["status"], "available")
+        self.assertTrue(update.status(cfg)["available"])
+        cfg = self.cfg()
+        os.remove(os.path.join(cfg["data_dir"], update.STATE_NAME))
+        self.assertEqual(update.run(cfg, now=1000, fetch=self.fetch(__version__), pull=self.pull())["status"], "current")
+        self.assertEqual(self.pulled, 0)
+
+    def test_check_failure_is_recorded(self):
+        def boom():
+            raise OSError("offline")
+        cfg = self.cfg()
+        self.assertEqual(update.run(cfg, now=1000, fetch=boom, pull=self.pull())["status"], "error")
+        self.assertFalse(update.status(cfg)["available"])
+
+
 class ServerTests(TempDir):
     def test_endpoints_on_demo_data(self):
         demo.generate(self.tmp, days=10)
@@ -224,6 +293,7 @@ class ServerTests(TempDir):
             hist = json.load(get(f"/api/history?account={demo.DEMO_ID}"))
             self.assertTrue(hist["days"])
             self.assertIn(b"Steam snapshot", get("/").read())
+            self.assertEqual(json.load(get("/api/version"))["running"], __version__)
             for bad in ("/api/snapshot?account=../x", "/api/snapshot?account=1&date=../../etc"):
                 with self.assertRaises(urllib.error.HTTPError) as e:
                     get(bad)

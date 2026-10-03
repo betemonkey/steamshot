@@ -158,10 +158,22 @@ The snapshots keep being taken in the background either way.
 
 ### Updating
 
+Steamshot updates itself. Every 6 hours the scheduled snapshot (and the dashboard, while
+it runs) asks GitHub for the newest version. If there is one, it runs `git pull`, and an
+open dashboard restarts and reloads the page within about a minute. Nothing to do.
+
+It only updates itself when the folder is a clean git checkout of `main`. If it can't (no
+git, a zip download, files you edited, another branch), the dashboard shows a banner
+instead and you update by hand:
+
 ```bash
 cd steamshot     # the folder from step 3
 git pull
 ```
+
+Set `auto = false` under `[updates]` to always get the banner instead, or `check = false`
+to never look. Versions before 1.1.0 can't update themselves, so pull once by hand to
+get this.
 
 Your `config.toml` and `data/` folder are never touched by an update.
 
@@ -195,6 +207,8 @@ data in `./data`.
 | | `country`, `language` | `"US"`, `"english"` | Store region and language for names and release dates. |
 | `[dashboard]` | `host`, `port` | `127.0.0.1`, `8765` | Where the dashboard listens. |
 | | `images` | `true` | Load cover art from Steam's image CDN. |
+| `[updates]` | `check` | `true` | Look up the newest version on GitHub every 6 hours. Off when `[online] enabled = false`. |
+| | `auto` | `true` | Install new versions with `git pull` and reload the dashboard. `false` = only show a banner. |
 
 The config is found in this order: `--config <path>`, then the `STEAM_SNAPSHOT_CONFIG`
 environment variable, then `config.toml` in the project folder.
@@ -278,9 +292,9 @@ your network can then see your library, since the dashboard has no login.
 | | |
 |---|---|
 | **Read** (never written) | In the Steam folder: `userdata/<id>/config/localconfig.vdf`, `appcache/appinfo.vdf`, `appcache/packageinfo.vdf`, `steamapps/appmanifest_*.acf` (in every library folder), `userdata/<id>/config/cloudstorage/cloud-storage-namespace-1.json`, and the profile names from `config/loginusers.vdf`. Login names and saved-password flags in that file are not read. |
-| **Sent** (only with `[online] enabled = true`) | To Steam's public endpoints (`api.steampowered.com`, `store.steampowered.com`): app ids whose names Steam's local cache is missing, your wishlist's app ids, and your SteamID64 for the wishlist request. No key, no cookies, nothing else. |
+| **Sent** (only with `[online] enabled = true`) | To Steam's public endpoints (`api.steampowered.com`, `store.steampowered.com`): app ids whose names Steam's local cache is missing, your wishlist's app ids, and your SteamID64 for the wishlist request. No key, no cookies, nothing else. To GitHub, unless `[updates] check = false`: a `git fetch` of this repo every 6 hours (or, for a copy that isn't a git checkout, one download of `steam_snapshot/__init__.py`). Nothing about your library. |
 | **Loaded by the dashboard** | Cover art from Steam's image CDN, unless `images = false`. |
-| **Stored** | `data/<steamid64>/snapshots/*.json`, `history.json` and `names.json`, plus `data/steam-snapshot.log`. Nothing outside the data folder. |
+| **Stored** | `data/<steamid64>/snapshots/*.json`, `history.json` and `names.json`, plus `data/steam-snapshot.log` and `data/update.json` (the last update check). Outside the data folder, only an update changes files: `git pull` in the project folder. |
 
 `config.toml`, `data/` and `demo-data/` are in `.gitignore`, so your library never ends up
 in a commit.

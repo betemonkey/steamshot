@@ -157,6 +157,13 @@ td.game a:hover { text-decoration: underline; }
 .muted { color: var(--ink-2); }
 .more { margin-top: 10px; }
 footer { color: var(--ink-2); font-size: 12.5px; margin-top: 18px; }
+.notice {
+  display: flex; gap: 10px; align-items: center; margin-bottom: 12px; padding: 10px 14px;
+  background: var(--accent-wash); border-radius: var(--radius); color: var(--ink);
+}
+.notice .spacer { flex: 1; }
+.notice code { background: var(--surface); padding: 1px 5px; border-radius: 4px; }
+.notice button { padding: 2px 9px; }
 footer code, .empty code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 
 @media (max-width: 900px) {
@@ -186,6 +193,8 @@ footer code, .empty code { background: var(--surface-2); padding: 1px 5px; borde
       <button id="theme" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
     </div>
   </header>
+
+  <div class="notice" id="notice" role="status" hidden></div>
 
   <main id="main"><p class="empty">Loading…</p></main>
 
@@ -244,6 +253,7 @@ async function boot() {
   catch (e) { $("#main").innerHTML = `<p class="empty">Cannot reach the steam-snapshot server (${esc(e.message)}).</p>`; return; }
   state.accounts = res.accounts; state.options = res.options || state.options;
   $("#foot").innerHTML = `steam-snapshot ${esc(res.version)} · data stays on this machine`;
+  watchVersion(res.version);
   if (!state.accounts.length) {
     $("#main").innerHTML = `<div class="card"><h2>No snapshots yet</h2><p class="empty">Take the first one with
       <code>python -m steam_snapshot snapshot</code>, then reload. To look around first, run
@@ -550,6 +560,37 @@ function renderRows() {
   $("#lib-more").innerHTML = rows.length > shown.length ? `<button id="show-more">Show all ${rows.length}</button>` : "";
   const more = $("#show-more");
   if (more) more.onclick = () => { state.limit = Infinity; renderRows(); };
+}
+
+// ---------- updates ----------
+// The server restarts itself after an update; when it answers with a new
+// version, reload so the page runs the new code too.
+function notice(html, key) {
+  const el = $("#notice");
+  if (!html || (key && stored("ssDismissed") === key)) { el.hidden = true; return; }
+  el.innerHTML = `<span>${html}</span><span class="spacer"></span><button aria-label="Dismiss">✕</button>`;
+  el.querySelector("button").onclick = () => { el.hidden = true; if (key) store("ssDismissed", key); };
+  el.hidden = false;
+}
+
+function watchVersion(loaded) {
+  const seen = stored("ssVersion");
+  store("ssVersion", loaded);
+  if (seen && seen !== loaded) notice(`Steamshot was updated to <b>${esc(loaded)}</b>.`);
+  async function check() {
+    let v;
+    try { v = await api("/api/version"); } catch (e) { return; }  // restarting, or stopped
+    if (v.running !== loaded) { location.reload(); return; }
+    if (v.available) {
+      const how = v.auto && v.status !== "manual" ? "It will install itself shortly."
+        : `${v.reason ? esc(v.reason[0].toUpperCase() + v.reason.slice(1)) + ", so it" : "It"} can't install itself.
+           Update by running <code>git pull</code> in the Steamshot folder.`;
+      notice(`Steamshot <b>${esc(v.latest)}</b> is available (you have ${esc(v.running)}). ${how}`, v.latest);
+    }
+  }
+  check();
+  setInterval(check, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
 }
 
 boot().catch(e => { $("#main").innerHTML = `<p class="empty">Something went wrong: ${esc(e.message)}</p>`; });

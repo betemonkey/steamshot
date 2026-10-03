@@ -9,6 +9,7 @@ otherwise - your playtime stays on your machine.
   GET /api/snapshots?account=ID  stored days with headline numbers
   GET /api/snapshot?account=ID&date=YYYY-MM-DD   one snapshot (latest if no date)
   GET /api/history?account=ID    playtime gained per day
+  GET /api/version               running version and update status
 """
 import json
 import mimetypes
@@ -113,6 +114,7 @@ class Data:
 class Handler(BaseHTTPRequestHandler):
     server_version = f"steam-snapshot/{__version__}"
     data = None  # set by make_server
+    cfg = None   # the full config, for the update status; None in tests
 
     def log_message(self, fmt, *args):  # keep the console quiet
         pass
@@ -139,6 +141,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, {"accounts": self.data.accounts(),
                                    "options": self.data.options,
                                    "version": __version__})
+        if url.path == "/api/version":
+            return self.send(200, self.version())
         if url.path.startswith("/api/"):
             if not ACCOUNT_RE.match(account) or (day and not DATE_RE.match(day)):
                 return self.send(400, {"error": "bad account or date"})
@@ -150,6 +154,12 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/history":
             return self.send(200, self.data.history(account))
         self.send(404, {"error": "not found"})
+
+    def version(self):
+        if not self.cfg:
+            return {"running": __version__, "available": False, "status": "off"}
+        from . import update
+        return update.status(self.cfg)
 
     def static(self, name):
         path = os.path.join(WEB_DIR, name)
@@ -164,6 +174,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send(200, body, ctype)
 
 
-def make_server(data_dir, host, port, options):
-    handler = type("BoundHandler", (Handler,), {"data": Data(data_dir, options)})
+def make_server(data_dir, host, port, options, cfg=None):
+    handler = type("BoundHandler", (Handler,), {"data": Data(data_dir, options), "cfg": cfg})
     return ThreadingHTTPServer((host, port), handler)
