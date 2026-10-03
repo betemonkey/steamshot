@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup: Year in review</title>
+<style>
+/* Same tokens as web/index.html */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f1f0ec;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11, 11, 11, .10);
+  --accent: #2a78d6; --accent-wash: rgba(42, 120, 214, .12); --good: #006300;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242422;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, .10);
+    --accent: #3987e5; --accent-wash: rgba(57, 135, 229, .16); --good: #0ca30c;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-bottom: 18px; }
+header h1 { font-size: 20px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+.who { color: var(--ink-2); }
+.spacer { flex: 1; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--ink-2); }
+select, button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+button { cursor: pointer; }
+button:hover { background: var(--surface-2); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.new-btn { background: var(--accent); color: #fff; border-color: transparent; font-weight: 600; }
+.new-btn:hover { background: var(--accent); filter: brightness(1.08); }
+.callout { position: relative; }
+.callout::after {
+  content: "new"; position: absolute; top: -9px; right: -8px; font-size: 10px; font-weight: 700;
+  background: #e5a000; color: #000; border-radius: 999px; padding: 0 6px; pointer-events: none;
+}
+.ghost { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; opacity: .55; }
+.ghost div { height: 86px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.ghost .big { grid-column: span 3; height: 280px; }
+.ghost .side { grid-column: span 2; height: 280px; }
+.wrap:has(+ .real:not([hidden])) { padding-bottom: 0; }
+.real { position: relative; height: calc(100vh - 71px); overflow: hidden; }
+.real iframe { position: absolute; left: 0; right: 0; top: -71px; width: 100%; height: calc(100% + 71px); border: 0; }
+.note { margin: 18px 0 0; color: var(--ink-2); max-width: 720px; }
+.mock-tag { position: fixed; right: 12px; bottom: 12px; z-index: 50; font-size: 11px; font-weight: 700; letter-spacing: .06em; background: #e5a000; color: #000; padding: 3px 8px; border-radius: 6px; }
+
+/* Generate dialog */
+dialog { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 20px; width: min(420px, 92vw); }
+dialog::backdrop { background: rgba(0, 0, 0, .45); }
+dialog h2 { margin: 0 0 4px; font-size: 17px; }
+dialog p { margin: 0 0 14px; color: var(--ink-2); }
+dialog .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+dialog .row label { width: 92px; color: var(--ink-2); }
+dialog .row select { flex: 1; }
+dialog .hint { font-size: 12.5px; color: var(--muted); margin: 4px 0 16px; }
+dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Slideshow: always dark, like Steam Replay */
+.show {
+  --s-ink: #ffffff; --s-ink-2: #c3c2b7; --s-muted: #898781; --s-accent: #3987e5;
+  --s-last: #5a5955; --s-good: #3ccf3c; --s-down: #e3a35a;
+  position: fixed; inset: 0; z-index: 40; display: none; color: var(--s-ink);
+  background: radial-gradient(1200px 700px at 15% 0%, #12305a 0%, transparent 60%),
+              radial-gradient(900px 600px at 100% 100%, #2a1747 0%, transparent 55%), #0b0b0d;
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.show.open { display: block; }
+.bars-top { position: absolute; top: 14px; left: 20px; right: 20px; display: flex; gap: 4px; z-index: 3; }
+.bars-top span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.18); overflow: hidden; }
+.bars-top span i { display: block; height: 100%; width: 0; background: #fff; }
+.bars-top span.done i { width: 100%; }
+.bars-top span.now i { width: 100%; animation: grow 7s linear; }
+.show.paused .bars-top span.now i { animation-play-state: paused; }
+@keyframes grow { from { width: 0; } to { width: 100%; } }
+.topbar { position: absolute; top: 28px; left: 20px; right: 20px; display: flex; align-items: center; gap: 8px; z-index: 3; color: var(--s-ink-2); font-size: 13px; }
+.topbar button { background: rgba(255,255,255,.08); color: #fff; border: 0; padding: 5px 10px; font-size: 13px; }
+.topbar button:hover { background: rgba(255,255,255,.16); }
+.nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: #fff; font-size: 20px; }
+.nav:hover { background: rgba(255,255,255,.18); }
+.nav.prev { left: 16px; } .nav.next { right: 16px; }
+.stage { position: absolute; inset: 70px 80px 40px; display: grid; place-items: center; }
+.slide { display: none; width: min(900px, 100%); animation: in .45s ease-out; }
+.slide.on { display: block; }
+@keyframes in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.kicker { color: var(--s-ink-2); font-size: 15px; letter-spacing: .02em; margin-bottom: 6px; }
+.slide h2 { font-size: clamp(28px, 4.2vw, 46px); line-height: 1.1; margin: 0 0 22px; font-weight: 700; letter-spacing: -.02em; }
+.hero { font-size: clamp(64px, 11vw, 132px); font-weight: 750; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.hero small { font-size: .3em; font-weight: 600; letter-spacing: 0; color: var(--s-ink-2); margin-left: 6px; }
+.vs { margin-top: 16px; font-size: 18px; color: var(--s-ink-2); }
+.up { color: var(--s-good); font-weight: 650; } .down { color: var(--s-down); font-weight: 650; }
+.fine { color: var(--s-muted); font-size: 13px; margin-top: 26px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.pair .cell { background: rgba(255,255,255,.05); border-radius: 14px; padding: 20px 22px; }
+.pair .lbl { color: var(--s-ink-2); font-size: 14px; }
+.pair .num { font-size: 52px; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.pair .sub { color: var(--s-ink-2); font-size: 14px; }
+.intro { text-align: center; }
+.intro .yr { font-size: clamp(90px, 16vw, 190px); font-weight: 800; letter-spacing: -.05em; line-height: .95;
+  background: linear-gradient(180deg, #fff 30%, #7fb2f0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.intro p { color: var(--s-ink-2); font-size: 18px; margin: 14px 0 0; }
+
+/* Month chart */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: 300px; overflow: visible; }
+.chart .tick { fill: var(--s-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chart .gl { stroke: rgba(255,255,255,.08); }
+.legend { display: flex; gap: 18px; color: var(--s-ink-2); font-size: 13px; margin-bottom: 10px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.tip { position: absolute; pointer-events: none; background: #1a1a19; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 7px 10px; font-size: 13px; white-space: nowrap; display: none; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
+.tip b { display: block; }
+
+/* Top games */
+.top { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.top li { display: grid; grid-template-columns: 34px 184px 1fr auto; gap: 16px; align-items: center; background: rgba(255,255,255,.05); border-radius: 12px; padding: 10px 16px 10px 12px; }
+.top .rk { font-size: 26px; font-weight: 750; color: var(--s-ink-2); text-align: center; }
+.top img { width: 184px; height: 69px; border-radius: 6px; object-fit: cover; background: #242422; }
+.top .n { font-size: 18px; font-weight: 600; }
+.top .m { color: var(--s-ink-2); font-size: 13px; }
+.top .h { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.top li:first-child { background: linear-gradient(90deg, rgba(57,135,229,.28), rgba(255,255,255,.05)); }
+.badge { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 2px; }
+.badge.new { background: rgba(57,135,229,.25); color: #9cc6f5; }
+.badge.u { background: rgba(60,207,60,.18); color: var(--s-good); }
+.badge.d { background: rgba(227,163,90,.18); color: var(--s-down); }
+.badge.s { background: rgba(255,255,255,.1); color: var(--s-ink-2); }
+
+/* Spotlight */
+.spot { display: grid; grid-template-columns: 1.1fr 1fr; gap: 34px; align-items: center; }
+.spot img { width: 100%; border-radius: 12px; aspect-ratio: 460/215; object-fit: cover; background: #242422; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+
+/* Collection share */
+.share .r { display: grid; grid-template-columns: 120px 1fr 110px; gap: 14px; align-items: center; padding: 7px 0; }
+.share .r + .r { border-top: 1px solid rgba(255,255,255,.07); }
+.share .nm { font-weight: 600; }
+.share .tr { display: grid; gap: 3px; }
+.share .b { height: 12px; border-radius: 0 4px 4px 0; }
+.share .b.t { background: var(--s-accent); } .share .b.l { background: var(--s-last); height: 6px; }
+.share .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--s-ink-2); font-size: 14px; }
+.share .v b { color: var(--s-ink); font-size: 16px; }
+
+/* Calendar heat strip */
+.cal { display: grid; grid-template-columns: repeat(40, 1fr); grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; margin: 8px 0 6px; }
+.cal i { aspect-ratio: 1; border-radius: 2px; background: rgba(255,255,255,.06); }
+.cal i.l1 { background: #1d3f6b; } .cal i.l2 { background: #2a63a8; } .cal i.l3 { background: #3987e5; } .cal i.l4 { background: #9cc6f5; }
+.cal i.st { outline: 1.5px solid #fff; outline-offset: -1px; }
+.cal i.fut { background: transparent; }
+.cal-legend { display: flex; gap: 6px; align-items: center; color: var(--s-muted); font-size: 12px; justify-content: flex-end; }
+.cal-legend i { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+
+/* Summary card */
+.card-sum { background: linear-gradient(160deg, #173a66, #1d1534 70%); border-radius: 20px; padding: 28px 30px; box-shadow: 0 30px 80px rgba(0,0,0,.5); max-width: 640px; margin: 0 auto; }
+.card-sum .hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+.card-sum .hd b { font-size: 22px; } .card-sum .hd span { color: var(--s-ink-2); font-size: 14px; }
+.card-sum .g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 14px; }
+.card-sum .g div span { display: block; color: var(--s-ink-2); font-size: 13px; }
+.card-sum .g div b { font-size: 28px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.card-sum .g div em { font-style: normal; font-size: 12.5px; }
+.card-sum .tops { margin-top: 18px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.card-sum .tops img { width: 100%; border-radius: 6px; aspect-ratio: 231/87; object-fit: cover; background: #242422; }
+.sum-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+.sum-actions button { background: rgba(255,255,255,.1); color: #fff; border: 0; padding: 8px 14px; }
+.sum-actions button:hover { background: rgba(255,255,255,.18); }
+
+@media (max-width: 760px) {
+  .stage { inset: 70px 16px 30px; }
+  .nav { display: none; }
+  .pair, .spot { grid-template-columns: 1fr; }
+  .top li { grid-template-columns: 26px 1fr auto; } .top img { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide { animation: none; } .bars-top span.now i { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="mock-tag">MOCKUP · INVENTED DATA</div>
+
+<!-- The dashboard as it is today, with the new button in the header -->
+<div class="wrap">
+  <header>
+    <h1>Steam snapshot</h1>
+    <span class="who">Demo player · 31 games</span>
+    <span class="spacer"></span>
+    <div class="controls">
+      <button class="new-btn callout" id="openGen">★ Year in review</button>
+      <label>Snapshot</label>
+      <select><option>3 Oct 2026</option></select>
+      <span>21:00</span>
+      <button>◐</button>
+    </div>
+  </header>
+  <div class="ghost" id="ghost" hidden>
+    <div></div><div></div><div></div><div></div><div></div>
+    <div class="big"></div><div class="side"></div>
+  </div>
+  <p class="note" id="ghostNote" hidden>The real dashboard would show here, but the demo server isn't running.
+    Start it with <code>python -m steam_snapshot demo</code> and reload this page.</p>
+</div>
+<!-- the real (demo) dashboard, with its own header cropped off -->
+<div class="real" id="real" hidden><iframe src="http://127.0.0.1:8765/" title="Dashboard"></iframe></div>
+
+<dialog id="gen">
+  <h2>Year in review</h2>
+  <p>A slideshow of your year on Steam, compared with the year before.</p>
+  <div class="row"><label for="y">Year</label>
+    <select id="y"><option>2026 (so far)</option><option>2025</option></select></div>
+  <div class="row"><label for="c">Compare with</label>
+    <select id="c"><option>2025</option><option>Nothing</option></select></div>
+  <div class="hint">Uses 1 Jan to 3 Oct of each year, so a year still in progress is compared fairly.
+    Built from your snapshots and history. Nothing is sent anywhere.</div>
+  <div class="actions">
+    <button id="cancel">Cancel</button>
+    <button class="new-btn" id="go">Generate</button>
+  </div>
+</dialog>
+
+<div class="show" id="show" role="dialog" aria-label="Year in review" aria-modal="true">
+  <div class="bars-top" id="prog"></div>
+  <div class="topbar">
+    <span>Year in review · Demo player</span><span class="spacer"></span>
+    <button id="pause" title="Pause (space)">❚❚ Pause</button>
+    <button id="close" title="Close (Esc)">✕</button>
+  </div>
+  <button class="nav prev" id="prev" aria-label="Previous">‹</button>
+  <button class="nav next" id="next" aria-label="Next">›</button>
+
+  <div class="stage">
+    <!-- 1 intro -->
+    <section class="slide intro">
+      <div class="kicker">Your year on Steam</div>
+      <div class="yr">2026</div>
+      <p>1 January to 3 October, compared with the same dates in 2025</p>
+    </section>
+
+    <!-- 2 total hours -->
+    <section class="slide">
+      <div class="kicker">Time played</div>
+      <h2>You played for</h2>
+      <div class="hero">612<small>hours</small></div>
+      <div class="vs"><span class="up">▲ 114 h (+23%)</span> on 2025's 498 h. That's about 2 h 13 min a day.</div>
+      <div class="fine">Only counts playtime from days with a snapshot. Steam keeps no history of its own.</div>
+    </section>
+
+    <!-- 3 month chart -->
+    <section class="slide">
+      <div class="kicker">Month by month</div>
+      <h2>September was your biggest month, at 101 hours</h2>
+      <div class="legend"><span><i style="background:var(--s-accent)"></i>2026</span><span><i style="background:var(--s-last)"></i>2025</span></div>
+      <div class="chart" id="mchart"><div class="tip" id="mtip"></div></div>
+    </section>
+
+    <!-- 4 top games -->
+    <section class="slide">
+      <div class="kicker">Your top 5</div>
+      <h2>The games you couldn't put down</h2>
+      <ol class="top" id="top"></ol>
+    </section>
+
+    <!-- 5 spotlight -->
+    <section class="slide">
+      <div class="spot">
+        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1551360/header.jpg" alt="">
+        <div>
+          <div class="kicker">Game of the year</div>
+          <h2>Forza Horizon 5</h2>
+          <div class="hero" style="font-size:84px">96<small>hours</small></div>
+          <div class="vs">16% of everything you played. It was #9 in 2025 with 21 h.</div>
+          <div class="vs">You played it on <b style="color:#fff">58 days</b>.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 days & streak -->
+    <section class="slide">
+      <div class="kicker">Consistency</div>
+      <h2>You played on 214 of 276 days</h2>
+      <div class="cal" id="cal"></div>
+      <div class="cal-legend">less <i style="background:rgba(255,255,255,.06)"></i><i style="background:#1d3f6b"></i><i style="background:#2a63a8"></i><i style="background:#3987e5"></i><i style="background:#9cc6f5"></i> more · <i style="outline:1.5px solid #fff;outline-offset:-1px"></i> longest streak</div>
+      <div class="pair" style="margin-top:18px">
+        <div class="cell"><div class="lbl">Longest streak</div><div class="num">19 days</div><div class="sub"><span class="up">▲ 8</span> vs 11 days in 2025 · 2 to 20 Aug</div></div>
+        <div class="cell"><div class="lbl">Biggest day</div><div class="num">9.2 h</div><div class="sub">Sat 14 Mar · mostly Forza Horizon 5</div></div>
+      </div>
+    </section>
+
+    <!-- 7 variety -->
+    <section class="slide">
+      <div class="kicker">Variety</div>
+      <h2>18 different games, 5 of them new to you</h2>
+      <div class="pair">
+        <div class="cell"><div class="lbl">Games played</div><div class="num">18</div><div class="sub"><span class="up">▲ 3</span> vs 15 in 2025</div></div>
+        <div class="cell"><div class="lbl">First played this year</div><div class="num">5</div><div class="sub">Cyberpunk 2077, Satisfactory, THE FINALS and 2 more</div></div>
+        <div class="cell"><div class="lbl">Comeback of the year</div><div class="num" style="font-size:34px;margin:8px 0">Valheim</div><div class="sub">22 h, after not being played at all in 2025</div></div>
+        <div class="cell"><div class="lbl">Library</div><div class="num">31</div><div class="sub"><span class="up">▲ 6 added</span> · 3 still unplayed (5 in 2025)</div></div>
+      </div>
+    </section>
+
+    <!-- 8 collections -->
+    <section class="slide">
+      <div class="kicker">What you played</div>
+      <h2>Racing took a bigger share, strategy a smaller one</h2>
+      <div class="legend"><span><i style="background:var(--s-accent)"></i>2026</span><span><i style="background:var(--s-last)"></i>2025</span></div>
+      <div class="share" id="share"></div>
+      <div class="fine">Grouped by your Steam collections. Games in no collection count as "Other".</div>
+    </section>
+
+    <!-- 9 summary card -->
+    <section class="slide">
+      <div class="card-sum">
+        <div class="hd"><b>Demo player's 2026</b><span>1 Jan to 3 Oct · vs 2025</span></div>
+        <div class="g">
+          <div><span>Hours played</span><b>612</b> <em class="up">+23%</em></div>
+          <div><span>Days played</span><b>214</b> <em class="up">+26</em></div>
+          <div><span>Longest streak</span><b>19 d</b> <em class="up">+8</em></div>
+          <div><span>Games played</span><b>18</b> <em class="up">+3</em></div>
+          <div><span>New to you</span><b>5</b> <em class="down">−1</em></div>
+          <div><span>Top month</span><b>Sep</b> <em style="color:var(--s-ink-2)">101 h</em></div>
+        </div>
+        <div class="tops" id="tops"></div>
+      </div>
+      <div class="sum-actions">
+        <button>⬇ Save as image</button>
+        <button id="again">↺ Watch again</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const cap = id => `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${id}/capsule_231x87.jpg`;
+
+// show the running demo dashboard under the header, or placeholders if it's not up
+fetch("http://127.0.0.1:8765/api/accounts", {mode: "no-cors"})
+  .then(() => { $("#real").hidden = false; })
+  .catch(() => { $("#ghost").hidden = false; $("#ghostNote").hidden = false; });
+
+// --- generate dialog ---
+const gen = $("#gen");
+$("#openGen").onclick = () => gen.showModal();
+$("#cancel").onclick = () => gen.close();
+$("#go").onclick = () => { gen.close(); openShow(); };
+
+// --- invented data ---
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const THIS = [58, 49, 82, 61, 44, 39, 77, 92, 101, 9];
+const LAST = [41, 52, 60, 48, 55, 47, 58, 66, 63, 8];
+const TOP = [
+  [1551360, "Forza Horizon 5", 96, ["u", "▲ from #9"]],
+  [227300, "Euro Truck Simulator 2", 74, ["d", "▼ from #1"]],
+  [578080, "PUBG: BATTLEGROUNDS", 61, ["s", "= #3"]],
+  [289070, "Sid Meier's Civilization VI", 55, ["d", "▼ from #2"]],
+  [1091500, "Cyberpunk 2077", 48, ["new", "new"]],
+];
+const SHARE = [["Strategy", 28, 34], ["Racing", 21, 12], ["Simulation", 19, 22], ["Online", 12, 14], ["Open world", 11, 9], ["Other", 9, 9]];
+
+$("#top").innerHTML = TOP.map(([id, n, h, [k, t]], i) =>
+  `<li><span class="rk">${i + 1}</span><img src="${cap(id)}" alt=""><div><div class="n">${n}<span class="badge ${k}">${t}</span></div>
+   <div class="m">${Math.round(h / 612 * 100)}% of your playtime</div></div><span class="h">${h} h</span></li>`).join("");
+$("#tops").innerHTML = TOP.map(([id]) => `<img src="${cap(id)}" alt="">`).join("");
+
+const maxS = 40;
+$("#share").innerHTML = SHARE.map(([n, t, l]) => `<div class="r"><span class="nm">${n}</span>
+  <div class="tr"><div class="b t" style="width:${t / maxS * 100}%"></div><div class="b l" style="width:${l / maxS * 100}%"></div></div>
+  <span class="v"><b>${t}%</b> · ${l}%</span></div>`).join("");
+
+// calendar: 40 weeks x 7 days, fake but deterministic
+(function () {
+  let seed = 7, out = "";
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let d = 0; d < 280; d++) {
+    let cls = "";
+    if (d >= 276) cls = "fut";
+    else {
+      const r = rnd();
+      cls = r < .22 ? "" : r < .45 ? "l1" : r < .72 ? "l2" : r < .92 ? "l3" : "l4";
+      if (d >= 213 && d <= 231) cls = (cls || "l1") + " st";
+    }
+    out += `<i class="${cls}"></i>`;
+  }
+  $("#cal").innerHTML = out;
+})();
+
+// month chart: grouped bars, this year vs last, one y axis
+(function () {
+  const W = 900, H = 300, L = 36, B = 26, T = 8, max = 120;
+  const y = v => T + (H - T - B) * (1 - v / max);
+  const gw = (W - L) / 12, bw = Math.min(26, gw * .32);
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Hours per month, 2026 vs 2025">`;
+  for (const v of [0, 30, 60, 90, 120]) s += `<line class="gl" x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="tick" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  const bar = (x, v, c) => { const h = H - B - y(v); const r = Math.min(4, h);
+    return `<path fill="${c}" d="M${x},${H - B} V${y(v) + r} q0,-${r} ${r},-${r} H${x + bw - r} q${r},0 ${r},${r} V${H - B} Z"/>`; };
+  MONTHS.forEach((m, i) => {
+    const cx = L + gw * i + gw / 2;
+    if (i < LAST.length) s += bar(cx - bw - 1, LAST[i], "var(--s-last)");
+    if (i < THIS.length) s += bar(cx + 1, THIS[i], "var(--s-accent)");
+    s += `<text class="tick" x="${cx}" y="${H - 6}" text-anchor="middle">${m}</text>`;
+    s += `<rect data-i="${i}" x="${L + gw * i}" y="0" width="${gw}" height="${H - B}" fill="transparent"/>`;
+  });
+  $("#mchart").insertAdjacentHTML("afterbegin", s + "</svg>");
+  const tip = $("#mtip");
+  $("#mchart svg").addEventListener("mousemove", e => {
+    const i = e.target.dataset?.i; if (i == null || i >= THIS.length) { tip.style.display = "none"; return; }
+    const box = $("#mchart").getBoundingClientRect();
+    tip.innerHTML = `<b>${MONTHS[i]}${i == 9 ? " (1 to 3 Oct)" : ""}</b>2026: ${THIS[i]} h<br>2025: ${LAST[i]} h`;
+    tip.style.display = "block";
+    tip.style.left = Math.min(e.clientX - box.left + 12, box.width - 150) + "px";
+    tip.style.top = (e.clientY - box.top - 50) + "px";
+  });
+  $("#mchart svg").addEventListener("mouseleave", () => tip.style.display = "none");
+})();
+
+// --- slideshow ---
+const show = $("#show"), slides = [...document.querySelectorAll(".slide")];
+$("#prog").innerHTML = slides.map(() => "<span><i></i></span>").join("");
+const bars = [...document.querySelectorAll("#prog span")];
+let cur = 0, timer = null, paused = false;
+function go(n) {
+  cur = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, i) => s.classList.toggle("on", i === cur));
+  bars.forEach((b, i) => { b.className = i < cur ? "done" : ""; });
+  void bars[cur].offsetWidth; bars[cur].className = cur === slides.length - 1 ? "done" : "now";
+  clearTimeout(timer);
+  if (!paused && cur < slides.length - 1) timer = setTimeout(() => go(cur + 1), 7000);
+}
+function openShow() { show.classList.add("open"); paused = false; show.classList.remove("paused"); $("#pause").textContent = "❚❚ Pause"; go(0); }
+function closeShow() { show.classList.remove("open"); clearTimeout(timer); }
+function togglePause() {
+  paused = !paused; show.classList.toggle("paused", paused);
+  $("#pause").textContent = paused ? "▶ Play" : "❚❚ Pause";
+  if (paused) clearTimeout(timer); else go(cur);
+}
+$("#next").onclick = () => go(cur + 1);
+$("#prev").onclick = () => go(cur - 1);
+$("#close").onclick = closeShow;
+$("#pause").onclick = togglePause;
+$("#again").onclick = () => go(0);
+document.addEventListener("keydown", e => {
+  if (!show.classList.contains("open")) return;
+  if (e.key === "ArrowRight") go(cur + 1);
+  else if (e.key === "ArrowLeft") go(cur - 1);
+  else if (e.key === "Escape") closeShow();
+  else if (e.key === " ") { e.preventDefault(); togglePause(); }
+});
+// #s3 opens straight on slide 3, paused (handy for screenshots)
+const m = location.hash.match(/^#s(\d+)$/);
+if (m) { openShow(); togglePause(); go(+m[1] - 1); }
+</script>
+</body>
+</html>
