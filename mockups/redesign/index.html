@@ -23,16 +23,18 @@ iframe { width: 100%; height: 100%; border: 0; display: block; }
 <body>
 <nav>
   <b>Steamshot redesigns</b>
-  <button data-src="d-toggle.html" aria-pressed="true">A + C toggle</button>
+  <button data-src="e-backgrounds.html" aria-pressed="true">Backgrounds</button>
+  <button data-src="d-toggle.html">A + C toggle</button>
   <button data-src="a-shelf.html">A. Shelf</button>
   <button data-src="b-ledger.html">B. Ledger</button>
   <button data-src="c-bento.html">C. Bento</button>
   <button data-src="http://127.0.0.1:8765/">Today's dashboard</button>
   <span class="note" id="note"></span>
 </nav>
-<iframe id="view" src="d-toggle.html" title="Mockup"></iframe>
+<iframe id="view" src="e-backgrounds.html" title="Mockup"></iframe>
 <script>
 const NOTES = {
+  "e-backgrounds.html": "The built layout with five backgrounds: pick one in the bar at the bottom.",
   "d-toggle.html": "Shelf and Tiles in one page: switch in the header, remembered for next time.",
   "a-shelf.html": "Cover art first: the game you're on, a shelf of recent games, the library as covers.",
   "b-ledger.html": "Words and numbers first: a sentence, a calendar of every day, one row per game.",
@@ -44,7 +46,7 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-pressed", x === b));
   view.src = b.dataset.src; note.textContent = NOTES[b.dataset.src];
 });
-note.textContent = NOTES["d-toggle.html"];
+note.textContent = NOTES["e-backgrounds.html"];
 </script>
 </body>
 </html>

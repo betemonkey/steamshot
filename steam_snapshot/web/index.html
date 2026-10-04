@@ -263,6 +263,138 @@ footer { color: var(--ink-2); font-size: 12.5px; margin-top: 28px; }
 .notice button { padding: 2px 9px; }
 footer code, .empty code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 
+/* ===== Cover wall: your own covers, tilted and faint, behind the top of the page ===== */
+body { position: relative; }
+.wrap { position: relative; z-index: 1; }
+.bgwall { position: absolute; left: 0; right: 0; top: 0; height: 1000px; overflow: hidden; pointer-events: none; z-index: 0; }
+.bgwall .tiles { position: absolute; left: -10%; right: -10%; top: -120px; display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px;
+  transform: rotate(-8deg); opacity: .16;
+  -webkit-mask-image: linear-gradient(#000 0%, rgba(0, 0, 0, .5) 40%, transparent 85%); mask-image: linear-gradient(#000 0%, rgba(0, 0, 0, .5) 40%, transparent 85%); }
+.bgwall img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 8px; display: block; background: var(--surface-2); }
+@media (max-width: 700px) { .bgwall .tiles { grid-template-columns: repeat(6, 1fr); } }
+@media (prefers-reduced-transparency: reduce) { .bgwall { display: none; } }
+
+/* ===== Year in review ===== */
+.yir-btn { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+.yir-btn:hover { background: var(--accent); filter: brightness(1.08); }
+dialog.yir-dlg { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 20px; width: min(430px, 92vw); }
+dialog.yir-dlg::backdrop { background: rgba(0, 0, 0, .5); }
+dialog.yir-dlg h2 { margin: 0 0 4px; font-size: 17px; }
+dialog.yir-dlg p { margin: 0 0 14px; color: var(--ink-2); }
+dialog.yir-dlg .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+dialog.yir-dlg .row label { width: 100px; color: var(--ink-2); }
+dialog.yir-dlg .row select { flex: 1; }
+dialog.yir-dlg .hint { font-size: 12.5px; color: var(--muted); margin: 4px 0 16px; }
+dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* the slideshow is always dark, like Steam Replay */
+.show {
+  --s-ink: #ffffff; --s-ink-2: #c3c2b7; --s-muted: #8f8e88; --s-accent: #3987e5;
+  --s-last: #5a5955; --s-good: #3ccf3c; --s-down: #e3a35a;
+  position: fixed; inset: 0; z-index: 40; color: var(--s-ink); overflow: hidden;
+  background: radial-gradient(1200px 700px at 15% 0%, #12305a 0%, transparent 60%),
+              radial-gradient(900px 600px at 100% 100%, #1d2440 0%, transparent 55%), #0b0b0d;
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.show .num { font-variant-numeric: tabular-nums; }
+.show .bars-top { position: absolute; top: 14px; left: 20px; right: 20px; display: flex; gap: 4px; z-index: 3; }
+.show .bars-top span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+.show .bars-top span i { display: block; height: 100%; width: 0; background: #fff; }
+.show .bars-top span.done i { width: 100%; }
+.show .bars-top span.now i { width: 100%; animation: yirgrow 7s linear; }
+.show.paused .bars-top span.now i { animation-play-state: paused; }
+@keyframes yirgrow { from { width: 0; } to { width: 100%; } }
+.show .topbar { position: absolute; top: 28px; left: 20px; right: 20px; display: flex; align-items: center; gap: 8px; z-index: 3; color: var(--s-ink-2); font-size: 13px; }
+.show .topbar button, .show .sum-actions button { background: rgba(255, 255, 255, .1); color: #fff; border: 0; padding: 6px 12px; font-size: 13px; }
+.show .topbar button:hover, .show .sum-actions button:hover { background: rgba(255, 255, 255, .2); }
+.show .nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .08); color: #fff; font-size: 22px; line-height: 1; }
+.show .nav:hover { background: rgba(255, 255, 255, .18); }
+.show .nav.prev { left: 16px; } .show .nav.next { right: 16px; }
+.show .stage { position: absolute; inset: 70px 80px 40px; display: grid; place-items: center; overflow-y: auto; }
+.show .slide { display: none; width: min(900px, 100%); animation: yirin .45s ease-out; }
+.show .slide.on { display: block; }
+@keyframes yirin { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.show .kicker { color: var(--s-ink-2); font-size: 15px; margin-bottom: 6px; }
+.show h2 { font-size: clamp(28px, 4.2vw, 46px); line-height: 1.1; margin: 0 0 22px; font-weight: 700; letter-spacing: -.02em; }
+.show .hero { font-size: clamp(64px, 11vw, 132px); font-weight: 750; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.show .hero small { font-size: .3em; font-weight: 600; letter-spacing: 0; color: var(--s-ink-2); margin-left: 6px; }
+.show .vs { margin-top: 16px; font-size: 18px; color: var(--s-ink-2); }
+.show .vs b { color: #fff; }
+.show .up { color: var(--s-good); font-weight: 650; } .show .down { color: var(--s-down); font-weight: 650; }
+.show .fine { color: var(--s-muted); font-size: 13px; margin-top: 26px; }
+.show .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.show .cell { background: rgba(255, 255, 255, .05); border-radius: 14px; padding: 18px 22px; min-width: 0; }
+.show .cell .lbl { color: var(--s-ink-2); font-size: 14px; }
+.show .cell .n { font-size: 46px; font-weight: 750; letter-spacing: -.03em; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.show .cell .n.word { font-size: 30px; margin: 8px 0; }
+.show .cell .sub { color: var(--s-ink-2); font-size: 14px; }
+.show .intro { text-align: center; }
+.show .intro .yr { font-size: clamp(90px, 16vw, 190px); font-weight: 800; letter-spacing: -.05em; line-height: .95;
+  background: linear-gradient(180deg, #fff 30%, #7fb2f0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.show .intro p { color: var(--s-ink-2); font-size: 18px; margin: 14px 0 0; }
+.show .legend { display: flex; gap: 18px; color: var(--s-ink-2); font-size: 13px; margin-bottom: 10px; }
+.show .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.show .mchart { position: relative; }
+.show .mchart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.show .mchart .t { fill: var(--s-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.show .mchart .gl { stroke: rgba(255, 255, 255, .08); }
+.show .mtip { position: absolute; pointer-events: none; background: #1a1a19; border: 1px solid rgba(255, 255, 255, .12); border-radius: 8px; padding: 7px 10px; font-size: 13px; white-space: nowrap; box-shadow: 0 6px 20px rgba(0, 0, 0, .4); }
+.show .mtip b { display: block; }
+.show .top { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.show .top li { display: grid; grid-template-columns: 34px 184px 1fr auto; gap: 16px; align-items: center; background: rgba(255, 255, 255, .05); border-radius: 12px; padding: 10px 16px 10px 12px; }
+.show .top li:first-child { background: linear-gradient(90deg, rgba(57, 135, 229, .28), rgba(255, 255, 255, .05)); }
+.show .top .rk { font-size: 26px; font-weight: 750; color: var(--s-ink-2); text-align: center; }
+.show .top .cap { width: 184px; height: 69px; border-radius: 6px; background: #242422 center/cover; overflow: hidden; }
+.show .top .cap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.show .top .nm { font-size: 18px; font-weight: 600; }
+.show .top .m { color: var(--s-ink-2); font-size: 13px; }
+.show .top .h { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.show .badge { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 2px; }
+.show .badge.new { background: rgba(57, 135, 229, .25); color: #9cc6f5; }
+.show .badge.u { background: rgba(60, 207, 60, .18); color: var(--s-good); }
+.show .badge.d { background: rgba(227, 163, 90, .18); color: var(--s-down); }
+.show .badge.s { background: rgba(255, 255, 255, .1); color: var(--s-ink-2); }
+.show .spot { display: grid; grid-template-columns: 1.1fr 1fr; gap: 34px; align-items: center; }
+.show .spot .pic { width: 100%; border-radius: 12px; aspect-ratio: 460 / 215; background: #242422 center/cover; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+.show .cal { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; margin: 8px 0 6px; }
+.show .cal i { aspect-ratio: 1; border-radius: 2px; background: rgba(255, 255, 255, .06); }
+.show .cal i.l1 { background: #1d3f6b; } .show .cal i.l2 { background: #2a63a8; } .show .cal i.l3 { background: #3987e5; } .show .cal i.l4 { background: #9cc6f5; }
+.show .cal i.nr { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .07) 0 2px, transparent 2px 4px); }
+.show .cal i.out { background: transparent; }
+.show .cal i.st { outline: 1.5px solid #fff; outline-offset: -1px; }
+.show .calkey { display: flex; gap: 6px; align-items: center; color: var(--s-muted); font-size: 12px; justify-content: flex-end; flex-wrap: wrap; }
+.show .calkey i { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+.show .share .r { display: grid; grid-template-columns: 150px 1fr 120px; gap: 14px; align-items: center; padding: 7px 0; }
+.show .share .r + .r { border-top: 1px solid rgba(255, 255, 255, .07); }
+.show .share .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.show .share .tr { display: grid; gap: 3px; }
+.show .share .b { height: 12px; border-radius: 0 4px 4px 0; background: var(--s-accent); min-width: 2px; }
+.show .share .b.l { background: var(--s-last); height: 6px; }
+.show .share .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--s-ink-2); font-size: 14px; }
+.show .share .v b { color: #fff; font-size: 16px; }
+.show .card-sum { background: linear-gradient(160deg, #173a66, #151a33 70%); border-radius: 20px; padding: 28px 30px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); max-width: 640px; margin: 0 auto; }
+.show .card-sum .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.show .card-sum .hd b { font-size: 22px; } .show .card-sum .hd span { color: var(--s-ink-2); font-size: 14px; }
+.show .card-sum .g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 14px; }
+.show .card-sum .g span { display: block; color: var(--s-ink-2); font-size: 13px; }
+.show .card-sum .g b { font-size: 28px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.show .card-sum .g em { font-style: normal; font-size: 12.5px; margin-left: 4px; }
+.show .card-sum .tops { margin-top: 18px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.show .card-sum .tops div { border-radius: 6px; aspect-ratio: 231 / 87; background: #242422 center/cover; }
+.show .sum-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+@media (max-width: 760px) {
+  .show .stage { inset: 70px 16px 30px; }
+  .show .nav { display: none; }
+  .show .pair, .show .spot { grid-template-columns: 1fr; }
+  .show .top li { grid-template-columns: 26px 1fr auto; } .show .top .cap { display: none; }
+  .show .share .r { grid-template-columns: 100px 1fr 90px; }
+  .show .card-sum .g { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .show .slide { animation: none; }
+  .show .bars-top span.now i { animation: none; }
+}
+
 @media (max-width: 900px) {
   .s-hero { grid-template-columns: 1fr; }
   .s-hero .spark { display: none; }
@@ -285,6 +417,7 @@ footer code, .empty code { background: var(--surface-2); padding: 1px 5px; borde
 </style>
 </head>
 <body>
+<div class="bgwall" id="bgwall" aria-hidden="true"><div class="tiles"></div></div>
 <div class="wrap">
   <header>
     <h1>Steam snapshot</h1>
@@ -292,6 +425,7 @@ footer code, .empty code { background: var(--surface-2); padding: 1px 5px; borde
     <span class="spacer"></span>
     <div class="controls">
       <select id="account" aria-label="Account" hidden></select>
+      <button id="yir" class="yir-btn" hidden>★ Year in review</button>
       <div class="switch" role="group" aria-label="Layout">
         <button data-view="shelf">Shelf</button>
         <button data-view="tiles">Tiles</button>
@@ -308,6 +442,24 @@ footer code, .empty code { background: var(--surface-2); padding: 1px 5px; borde
   <main id="main"><p class="empty">Loading…</p></main>
 
   <footer id="foot"></footer>
+</div>
+
+<dialog class="yir-dlg" id="yirDlg" aria-labelledby="yirTitle">
+  <h2 id="yirTitle">Year in review</h2>
+  <p>A slideshow of your year on Steam, compared with the year before.</p>
+  <div class="row"><label for="yirYear">Year</label><select id="yirYear"></select></div>
+  <div class="row"><label for="yirCmp">Compare with</label><select id="yirCmp"></select></div>
+  <div class="hint" id="yirHint"></div>
+  <div class="actions"><button id="yirCancel">Cancel</button><button class="yir-btn" id="yirGo">Generate</button></div>
+</dialog>
+
+<div class="show" id="show" role="dialog" aria-modal="true" aria-label="Year in review" hidden>
+  <div class="bars-top" id="yirProg"></div>
+  <div class="topbar"><span id="yirWho"></span><span class="spacer"></span>
+    <button id="yirPause" title="Pause (space)">❚❚ Pause</button><button id="yirClose" title="Close (Esc)" aria-label="Close">✕</button></div>
+  <button class="nav prev" id="yirPrev" aria-label="Previous slide">‹</button>
+  <button class="nav next" id="yirNext" aria-label="Next slide">›</button>
+  <div class="stage" id="yirStage"></div>
 </div>
 
 <script>
@@ -412,6 +564,14 @@ async function boot() {
   const acct = state.accounts.find(a => a.steamid64 === want) || state.accounts[0];
   sel.value = acct.steamid64;
   await loadAccount(acct.steamid64);
+  // ?yir=2026&slide=3 opens Year in review straight on a slide, paused (for screenshots)
+  const p = new URLSearchParams(location.search);
+  if (p.get("yir") && yirYears().includes(+p.get("yir"))) {
+    openYirDialog();
+    $("#yirYear").value = p.get("yir"); $("#yirYear").onchange();
+    yirStart();
+    if (p.get("slide")) { yir.paused = true; yirPauseLabel(); yirGo(+p.get("slide") - 1); }
+  }
 }
 
 async function loadAccount(id) {
@@ -522,6 +682,8 @@ function render() {
   $("#taken").textContent = isNaN(t) ? "" : "taken " + t.toLocaleTimeString(undefined, {hour: "2-digit", minute: "2-digit"});
 
   const f = facts();
+  drawWall(f.games);
+  $("#yir").hidden = !yirYears().length;
   $("#main").innerHTML = state.view === "tiles" ? tilesView(f) : shelfView(f);
   document.querySelectorAll("[data-range]").forEach(b => b.onclick = () => { state.range = +b.dataset.range; render(); });
   drawChart(histWindow(snap.date, state.range), f.names);
@@ -888,6 +1050,375 @@ function renderRows() {
   }).join("") || `<tr><td colspan="5" class="empty">No games match.</td></tr>`;
   showMore(rows.length, shown.length, renderRows);
 }
+
+// ---------- cover wall (the page background) ----------
+function drawWall(games) {
+  const el = $("#bgwall .tiles");
+  if (!state.options.images || !games.length) { el.innerHTML = ""; el.dataset.key = ""; return; }
+  const played = [...games].filter(g => g.minutes).sort((a, b) => b.minutes - a.minutes);
+  const src = played.length ? played : games;
+  const key = src.map(g => g.appid).join();
+  if (el.dataset.key === key) return;  // same games: keep the images already loaded
+  el.dataset.key = key;
+  el.innerHTML = Array.from({length: 48}, (_, i) => src[(i * 7 + Math.floor(i / src.length)) % src.length])
+    .map(g => `<img alt="" loading="lazy" src="${artUrl(g.appid, "library_600x900.jpg")}" onerror="this.onerror=null;this.src='${artUrl(g.appid, "header.jpg")}'">`).join("");
+}
+
+// ---------- Year in review ----------
+// A slideshow of one year compared with the same dates the year before, built
+// only from history.json and the stored snapshots.
+const yir = {slides: 0, cur: 0, timer: null, paused: false, data: null, opener: null};
+const SLIDE_MS = 7000;
+const shiftYear = (iso, dy) => `${+iso.slice(0, 4) + dy}-${iso.slice(5) === "02-29" ? "02-28" : iso.slice(5)}`;
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+
+function yirYears() {
+  if (!state.hist || !state.hist.since || !state.snap) return [];
+  const out = [];
+  for (let y = +state.snap.date.slice(0, 4); y >= +state.hist.since.slice(0, 4); y--) out.push(y);
+  return out;
+}
+function yirWindow(year) {
+  const snapIso = state.snap.date;
+  return {start: `${year}-01-01`, end: year < +snapIso.slice(0, 4) ? `${year}-12-31` : snapIso};
+}
+function yirStats(start, end) {
+  const days = histWindow(end, daysBetween(start, end) + 1);
+  const per = {}, perDays = {}, months = Array(12).fill(0);
+  let total = 0, played = 0, tracked = 0, big = null, best = {len: 0}, run = 0, runStart = null;
+  days.forEach(d => {
+    if (d.tracked) tracked++;
+    if (d.mins) {
+      played++; total += d.mins; months[+d.iso.slice(5, 7) - 1] += d.mins;
+      if (!big || d.mins > big.mins) big = d;
+      run++; if (run === 1) runStart = d.iso;
+      if (run > best.len) best = {len: run, from: runStart, to: d.iso};
+    } else run = 0;
+    Object.entries(d.apps).forEach(([a, m]) => { if (m > 0) { per[a] = (per[a] || 0) + m; perDays[a] = (perDays[a] || 0) + 1; } });
+  });
+  const ranking = Object.entries(per).sort((a, b) => b[1] - a[1]).map(([a]) => a);
+  return {start, end, days, per, perDays, months, total, played, tracked, big, best, ranking, n: days.length};
+}
+function yirCompareOk(year) {
+  const w = yirWindow(year);
+  return yirStats(shiftYear(w.start, -1), shiftYear(w.end, -1)).tracked > 0;
+}
+
+function yirBuild(year, compare) {
+  const snap = state.snap, w = yirWindow(year), cur = yirStats(w.start, w.end);
+  let prev = null;
+  if (compare) { const p = yirStats(shiftYear(w.start, -1), shiftYear(w.end, -1)); if (p.tracked) prev = p; }
+  const byId = Object.fromEntries((snap.games || []).map(g => [String(g.appid), g]));
+  const name = a => (byId[a] && byId[a].name) || "App " + a;
+  // minutes each game had before this year: today's total minus what history saw since 1 January
+  const since = {};
+  histWindow(snap.date, daysBetween(w.start, snap.date) + 1).forEach(d => Object.entries(d.apps).forEach(([a, m]) => since[a] = (since[a] || 0) + m));
+  const before = a => (byId[a] ? byId[a].minutes || 0 : 0) - (since[a] || 0);
+  const fresh = cur.ranking.filter(a => before(a) <= 0);
+  let comeback = null;
+  if (prev && prev.tracked === prev.n)
+    comeback = cur.ranking.find(a => !prev.per[a] && before(a) > 0) || null;
+  // library size at the start and end of the window, from the stored snapshots
+  const inWin = state.snaps.filter(s => s.date >= w.start && s.date <= w.end);
+  const lib = inWin.length ? {start: inWin[0], end: inWin[inWin.length - 1]} : null;
+  const unplayed = w.end === snap.date ? visibleGames(snap).filter(g => !g.minutes).length : null;
+  const colsOf = a => (byId[a] && byId[a].collections && byId[a].collections.length) ? byId[a].collections : ["Not in a collection"];
+  const colShare = st => {
+    const by = {};
+    Object.entries(st.per).forEach(([a, m]) => colsOf(a).forEach(c => by[c] = (by[c] || 0) + m));
+    return by;
+  };
+  const hasCols = (snap.games || []).some(g => g.collections && g.collections.length);
+  return {year, w, cur, prev, name, fresh, comeback, lib, unplayed, byId,
+          cols: hasCols ? {cur: colShare(cur), prev: prev ? colShare(prev) : null} : null,
+          persona: (snap.account || {}).persona || ""};
+}
+
+// ----- slides -----
+function upDown(a, b, fmt = x => x) {
+  const d = a - b;
+  return d > 0 ? `<span class="up">▲ ${fmt(d)}</span>` : d < 0 ? `<span class="down">▼ ${fmt(-d)}</span>` : `<span>no change</span>`;
+}
+const longDate = iso => fmtDay(iso, {day: "numeric", month: "long"});
+const hrs = m => fmtH(m) + " h";
+function capImg(appid) {
+  return state.options.images ? `<img alt="" src="${artUrl(appid, "capsule_231x87.jpg")}" onerror="this.onerror=null;this.src='${artUrl(appid, "header.jpg")}'">` : "";
+}
+
+function yirSlides(Y) {
+  const {cur, prev, w, year} = Y, py = year - 1, out = [];
+  const whole = w.end.slice(5) === "12-31";
+  const range = whole ? `All of ${year}` : `${longDate(w.start)} to ${longDate(w.end)}`;
+  const since = state.hist.since, partial = since > w.start;
+  out.push(`<section class="slide intro"><div class="kicker">Your year on Steam</div><div class="yr">${year}</div>
+    <p>${range}${prev ? `, compared with the same dates in ${py}` : ""}</p></section>`);
+
+  // time played
+  const perDay = cur.total / Math.max(1, cur.tracked);
+  out.push(`<section class="slide"><div class="kicker">Time played</div><h2>You played for</h2>
+    <div class="hero">${fmtH(cur.total)}<small>hours</small></div>
+    <div class="vs">${prev ? `${upDown(cur.total, prev.total, hrs)}${prev.total ? ` (${cur.total >= prev.total ? "+" : "-"}${pct(Math.abs(cur.total - prev.total), prev.total)}%)` : ""} on ${py}'s ${hrs(prev.total)}. ` : ""}That's about ${Math.floor(perDay / 60) ? Math.floor(perDay / 60) + " h " : ""}${Math.round(perDay % 60)} min a day.</div>
+    <div class="fine">${partial ? `Recorded from ${longDate(since)}: Steam keeps no history, so earlier days aren't known. ` : ""}Only counts playtime from days with a snapshot.</div></section>`);
+
+  // month by month
+  const lastM = +w.end.slice(5, 7);
+  const months = cur.months.slice(0, lastM), topM = months.indexOf(Math.max(...months));
+  const MN = Array.from({length: 12}, (_, i) => new Date(Date.UTC(2000, i, 1)).toLocaleDateString(undefined, {month: "short", timeZone: "UTC"}));
+  const MLONG = Array.from({length: 12}, (_, i) => new Date(Date.UTC(2000, i, 1)).toLocaleDateString(undefined, {month: "long", timeZone: "UTC"}));
+  if (cur.total) out.push(`<section class="slide"><div class="kicker">Month by month</div>
+    <h2>${MLONG[topM]} was your biggest month, at ${hrs(months[topM])}</h2>
+    <div class="legend"><span><i style="background:var(--s-accent)"></i>${year}</span>${prev ? `<span><i style="background:var(--s-last)"></i>${py}</span>` : ""}</div>
+    <div class="mchart" id="yirMonths">${monthChart(cur.months, prev && prev.months, lastM, MN)}<div class="mtip" hidden></div></div></section>`);
+
+  // top 5
+  const top = cur.ranking.slice(0, 5);
+  if (top.length) out.push(`<section class="slide"><div class="kicker">Your top ${top.length}</div><h2>The games you couldn't put down</h2>
+    <ol class="top">${top.map((a, i) => {
+      let badge = "";
+      if (prev) {
+        const r = prev.ranking.indexOf(a);
+        badge = r === -1 ? `<span class="badge new">new</span>` : r === i ? `<span class="badge s">= #${i + 1}</span>`
+          : r > i ? `<span class="badge u">▲ from #${r + 1}</span>` : `<span class="badge d">▼ from #${r + 1}</span>`;
+      }
+      return `<li><span class="rk">${i + 1}</span><div class="cap">${capImg(a)}</div><div><div class="nm">${esc(Y.name(a))}${badge}</div>
+        <div class="m">${pct(cur.per[a], cur.total)}% of your playtime</div></div><span class="h">${hrs(cur.per[a])}</span></li>`;
+    }).join("")}</ol></section>`);
+
+  // game of the year
+  if (top.length) {
+    const a = top[0], pr = prev ? prev.ranking.indexOf(a) : -2;
+    out.push(`<section class="slide"><div class="spot">
+      <div class="pic"${state.options.images ? ` style="background-image:url(${artUrl(a, "header.jpg")})"` : ""}></div>
+      <div><div class="kicker">Game of the year</div><h2>${esc(Y.name(a))}</h2>
+        <div class="hero" style="font-size:84px">${fmtH(cur.per[a])}<small>hours</small></div>
+        <div class="vs">${pct(cur.per[a], cur.total)}% of everything you played.${pr >= 0 ? ` It was #${pr + 1} in ${py} with ${hrs(prev.per[a])}.` : pr === -1 ? ` You didn't play it in ${py}.` : ""}</div>
+        <div class="vs">You played it on <b>${cur.perDays[a]} ${cur.perDays[a] === 1 ? "day" : "days"}</b>.</div></div></div></section>`);
+  }
+
+  // consistency
+  if (cur.tracked) {
+    const big = cur.big, bigTop = big ? Object.entries(big.apps).sort((x, y) => y[1] - x[1])[0] : null;
+    out.push(`<section class="slide"><div class="kicker">Consistency</div><h2>You played on ${cur.played} of ${cur.tracked} days</h2>
+      ${calendar(cur, w)}
+      <div class="calkey">less <i style="background:rgba(255,255,255,.06)"></i><i style="background:#1d3f6b"></i><i style="background:#2a63a8"></i><i style="background:#3987e5"></i><i style="background:#9cc6f5"></i> more
+        ${partial ? `<i style="background:repeating-linear-gradient(135deg,rgba(255,255,255,.2) 0 2px,transparent 2px 4px)"></i> not recorded` : ""}
+        ${cur.best.len ? `<i style="outline:1.5px solid #fff;outline-offset:-1px"></i> longest streak` : ""}</div>
+      <div class="pair" style="margin-top:18px">
+        <div class="cell"><div class="lbl">Longest streak</div><div class="n">${cur.best.len} ${cur.best.len === 1 ? "day" : "days"}</div>
+          <div class="sub">${prev ? upDown(cur.best.len, prev.best.len) + ` vs ${prev.best.len} in ${py}` : ""}${cur.best.len ? `${prev ? ", " : ""}${fmtDay(cur.best.from)} to ${fmtDay(cur.best.to)}` : ""}</div></div>
+        <div class="cell"><div class="lbl">Biggest day</div><div class="n">${big ? hrs(big.mins) : "0 h"}</div>
+          <div class="sub">${big ? `${esc(fmtDay(big.iso, {weekday: "short", day: "numeric", month: "short"}))}, mostly ${esc(Y.name(bigTop[0]))}` : ""}</div></div>
+      </div></section>`);
+  }
+
+  // variety
+  const nGames = cur.ranking.length;
+  if (nGames) {
+    const cells = [];
+    cells.push(`<div class="cell"><div class="lbl">Games played</div><div class="n">${nGames}</div><div class="sub">${prev ? `${upDown(nGames, prev.ranking.length)} vs ${prev.ranking.length} in ${py}` : "different games"}</div></div>`);
+    cells.push(`<div class="cell"><div class="lbl">First played this year</div><div class="n">${Y.fresh.length}</div><div class="sub">${Y.fresh.length ? esc(Y.fresh.slice(0, 3).map(Y.name).join(", ")) + (Y.fresh.length > 3 ? ` and ${Y.fresh.length - 3} more` : "") : "All old favourites"}</div></div>`);
+    if (Y.comeback) cells.push(`<div class="cell"><div class="lbl">Comeback of the year</div><div class="n word">${esc(Y.name(Y.comeback))}</div><div class="sub">${hrs(cur.per[Y.comeback])}, after not being played at all in ${py}</div></div>`);
+    else { const a = Object.entries(cur.perDays).sort((x, y) => y[1] - x[1])[0][0];
+      cells.push(`<div class="cell"><div class="lbl">Played on the most days</div><div class="n word">${esc(Y.name(a))}</div><div class="sub">${cur.perDays[a]} days</div></div>`); }
+    if (Y.lib) {
+      const added = Y.lib.end.games - Y.lib.start.games;
+      cells.push(`<div class="cell"><div class="lbl">Library</div><div class="n">${Y.lib.end.games}</div><div class="sub">${added > 0 ? `<span class="up">▲ ${added} added</span>` : added < 0 ? `<span class="down">▼ ${-added}</span>` : "no change"} since ${fmtDay(Y.lib.start.date)}${Y.unplayed !== null ? `, ${Y.unplayed} still unplayed` : ""}</div></div>`);
+    }
+    out.push(`<section class="slide"><div class="kicker">Variety</div><h2>${nGames} different ${nGames === 1 ? "game" : "games"}${Y.fresh.length ? `, ${Y.fresh.length} of them new to you` : ""}</h2>
+      <div class="pair">${cells.join("")}</div></section>`);
+  }
+
+  // collections
+  if (Y.cols && cur.total) {
+    const rows = Object.entries(Y.cols.cur).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    const pt = prev ? prev.total : 0;
+    const vals = rows.flatMap(([c, m]) => [pct(m, cur.total), prev ? pct(Y.cols.prev[c] || 0, pt) : 0]);
+    const max = Math.max(...vals, 1);
+    const gainer = prev ? rows.map(([c, m]) => [c, pct(m, cur.total) - pct(Y.cols.prev[c] || 0, pt)]).sort((a, b) => b[1] - a[1])[0] : null;
+    out.push(`<section class="slide"><div class="kicker">What you played</div>
+      <h2>${gainer && gainer[1] > 0 ? `${esc(gainer[0])} took a bigger share this year` : `Mostly ${esc(rows[0][0])}`}</h2>
+      <div class="legend"><span><i style="background:var(--s-accent)"></i>${year}</span>${prev ? `<span><i style="background:var(--s-last)"></i>${py}</span>` : ""}</div>
+      <div class="share">${rows.map(([c, m]) => { const t = pct(m, cur.total), l = prev ? pct(Y.cols.prev[c] || 0, pt) : null;
+        return `<div class="r"><span class="nm">${esc(c)}</span><div class="tr"><div class="b" style="width:${t / max * 100}%"></div>${l !== null ? `<div class="b l" style="width:${l / max * 100}%"></div>` : ""}</div>
+          <span class="v"><b>${t}%</b>${l !== null ? ` · ${l}%` : ""}</span></div>`; }).join("")}</div>
+      <div class="fine">Share of your playtime per Steam collection. A game in several collections counts in each.</div></section>`);
+  }
+
+  // summary card
+  const em = (a, b, f = x => x) => prev ? (a - b > 0 ? `<em class="up">+${f(a - b)}</em>` : a - b < 0 ? `<em class="down">-${f(b - a)}</em>` : "") : "";
+  const tm = cur.total ? MN[topM] : "-";
+  Y.summary = [["Hours played", fmtH(cur.total), em(cur.total, prev ? prev.total : 0, fmtH)],
+               ["Days played", cur.played, em(cur.played, prev ? prev.played : 0)],
+               ["Longest streak", cur.best.len + " d", em(cur.best.len, prev ? prev.best.len : 0)],
+               ["Games played", nGames, em(nGames, prev ? prev.ranking.length : 0)],
+               ["New to you", Y.fresh.length, ""],
+               ["Top month", tm, cur.total ? `<em style="color:var(--s-ink-2)">${hrs(months[topM])}</em>` : ""]];
+  out.push(`<section class="slide"><div class="card-sum">
+      <div class="hd"><b>${esc(Y.persona ? Y.persona + "'s " : "")}${year}</b><span>${whole ? "All year" : fmtDay(w.start) + " to " + fmtDay(w.end)}${prev ? `, vs ${py}` : ""}</span></div>
+      <div class="g">${Y.summary.map(([l, v, e]) => `<div><span>${l}</span><b>${v}</b>${e}</div>`).join("")}</div>
+      ${state.options.images && top.length ? `<div class="tops">${top.map(a => `<div style="background-image:url(${artUrl(a, "capsule_231x87.jpg")}),url(${artUrl(a, "header.jpg")})"></div>`).join("")}</div>` : ""}
+    </div>
+    <div class="sum-actions"><button id="yirSave">Save as image</button><button id="yirAgain">Watch again</button></div></section>`);
+  return out.join("");
+}
+
+function monthChart(curM, prevM, lastM, MN) {
+  const W = 900, H = 300, L = 40, B = 26, T = 10;
+  const vals = [...curM.slice(0, lastM), ...(prevM ? prevM.slice(0, lastM) : [])];
+  const maxH = Math.max(...vals, 60) / 60, step = niceStep(maxH), top = Math.ceil(maxH / step) * step;
+  const y = h => T + (H - T - B) * (1 - h / top);
+  const gw = (W - L) / 12, bw = Math.min(26, gw * .32);
+  const bar = (x, m, fill) => { if (!m) return ""; const y1 = y(m / 60), r = Math.min(4, H - B - y1);
+    return `<path fill="${fill}" d="M${x},${H - B} V${y1 + r} q0,-${r} ${r},-${r} H${x + bw - r} q${r},0 ${r},${r} V${H - B} Z"/>`; };
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hours per month">`;
+  for (let v = 0; v <= top + 1e-9; v += step) s += `<line class="gl" x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="t" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  MN.forEach((m, i) => {
+    const cx = L + gw * i + gw / 2;
+    if (i < lastM) {
+      if (prevM) s += bar(cx - bw - 1, prevM[i], "var(--s-last)");
+      s += bar(prevM ? cx + 1 : cx - bw / 2, curM[i], "var(--s-accent)");
+      s += `<rect data-m="${i}" x="${L + gw * i}" y="0" width="${gw}" height="${H - B}" fill="transparent"/>`;
+    }
+    s += `<text class="t" x="${cx}" y="${H - 6}" text-anchor="middle">${m}</text>`;
+  });
+  return s + "</svg>";
+}
+
+function calendar(cur, w) {
+  const vals = cur.days.filter(d => d.mins).map(d => d.mins).sort((a, b) => a - b);
+  const q = p => vals[Math.floor(p * (vals.length - 1))] || 1;
+  const cuts = [q(.25), q(.5), q(.75)];
+  const startT = toUTC(w.start), endT = toUTC(w.end);
+  const first = startT - ((new Date(startT).getUTCDay() + 6) % 7) * DAY;
+  const byIso = Object.fromEntries(cur.days.map(d => [d.iso, d]));
+  let html = "";
+  for (let t = first; t <= endT || (new Date(t).getUTCDay() + 6) % 7 !== 0; t += DAY) {
+    const iso = isoOf(t), d = byIso[iso];
+    if (!d) { html += `<i class="out"></i>`; continue; }
+    const st = cur.best.len && iso >= cur.best.from && iso <= cur.best.to ? " st" : "";
+    const label = `${fmtDay(iso, {weekday: "short", day: "numeric", month: "short"})}: ${!d.tracked ? "not recorded" : d.mins ? hrs(d.mins) : "not played"}`;
+    const lvl = !d.tracked ? "nr" : !d.mins ? "" : d.mins <= cuts[0] ? "l1" : d.mins <= cuts[1] ? "l2" : d.mins <= cuts[2] ? "l3" : "l4";
+    html += `<i class="${lvl}${st}" title="${esc(label)}"></i>`;
+  }
+  return `<div class="cal" role="img" aria-label="Hours per day">${html}</div>`;
+}
+
+// ----- dialog and playback -----
+function openYirDialog() {
+  const dlg = $("#yirDlg"), ys = $("#yirYear"), cs = $("#yirCmp");
+  const years = yirYears();
+  ys.innerHTML = years.map(y => `<option value="${y}">${y}${y === +state.snap.date.slice(0, 4) && !state.snap.date.endsWith("12-31") ? " (so far)" : ""}</option>`).join("");
+  const sync = () => {
+    const y = +ys.value, ok = yirCompareOk(y), w = yirWindow(y);
+    cs.innerHTML = `<option value="1"${ok ? "" : " disabled"}>${y - 1}${ok ? "" : " (no data)"}</option><option value="0"${ok ? "" : " selected"}>Nothing</option>`;
+    $("#yirHint").textContent = (w.end.endsWith("12-31") ? "Uses the whole year. " : `Uses ${longDate(w.start)} to ${longDate(w.end)} of each year, so a year still in progress is compared fairly. `)
+      + "Built from your snapshots and history on this computer. Nothing is sent anywhere.";
+  };
+  ys.onchange = sync;
+  sync();
+  yir.opener = document.activeElement;
+  dlg.showModal();
+}
+function yirStart() {
+  $("#yirDlg").close();
+  const Y = yirBuild(+$("#yirYear").value, $("#yirCmp").value === "1");
+  yir.data = Y;
+  const show = $("#show");
+  $("#yirStage").innerHTML = yirSlides(Y);
+  $("#yirWho").textContent = `Year in review${Y.persona ? ", " + Y.persona : ""}`;
+  yir.slides = show.querySelectorAll(".slide").length;
+  $("#yirProg").innerHTML = Array.from({length: yir.slides}, () => "<span><i></i></span>").join("");
+  wireMonthTip(Y);
+  $("#yirSave").onclick = () => yirSaveImage(Y);
+  $("#yirAgain").onclick = () => yirGo(0);
+  show.hidden = false;
+  document.body.style.overflow = "hidden";
+  yir.paused = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  yirPauseLabel();
+  yirGo(0);
+  $("#yirClose").focus();
+}
+function yirGo(n) {
+  const slides = document.querySelectorAll("#yirStage .slide"), bars = document.querySelectorAll("#yirProg span");
+  yir.cur = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, i) => s.classList.toggle("on", i === yir.cur));
+  bars.forEach((b, i) => { b.className = i < yir.cur ? "done" : ""; });
+  void bars[yir.cur].offsetWidth;
+  bars[yir.cur].className = yir.cur === slides.length - 1 || yir.paused ? (yir.cur === slides.length - 1 ? "done" : "") : "now";
+  clearTimeout(yir.timer);
+  if (!yir.paused && yir.cur < slides.length - 1) yir.timer = setTimeout(() => yirGo(yir.cur + 1), SLIDE_MS);
+}
+function yirPauseLabel() {
+  $("#show").classList.toggle("paused", yir.paused);
+  $("#yirPause").textContent = yir.paused ? "▶ Play" : "❚❚ Pause";
+}
+function yirTogglePause() { yir.paused = !yir.paused; yirPauseLabel(); yirGo(yir.cur); }
+function yirClose() {
+  clearTimeout(yir.timer);
+  $("#show").hidden = true;
+  document.body.style.overflow = "";
+  if (yir.opener && yir.opener.focus) yir.opener.focus();
+}
+function wireMonthTip(Y) {
+  const box = $("#yirMonths");
+  if (!box) return;
+  const tip = $(".mtip", box), svg = box.querySelector("svg");
+  const MLONG = i => new Date(Date.UTC(2000, i, 1)).toLocaleDateString(undefined, {month: "long", timeZone: "UTC"});
+  svg.addEventListener("mousemove", e => {
+    const i = e.target.dataset && e.target.dataset.m;
+    if (i === undefined) { tip.hidden = true; return; }
+    tip.innerHTML = `<b>${MLONG(+i)}</b>${Y.year}: ${hrs(Y.cur.months[i])}${Y.prev ? `<br>${Y.year - 1}: ${hrs(Y.prev.months[i])}` : ""}`;
+    tip.hidden = false;
+    const r = box.getBoundingClientRect();
+    tip.style.left = Math.min(e.clientX - r.left + 12, r.width - tip.offsetWidth) + "px";
+    tip.style.top = (e.clientY - r.top - tip.offsetHeight - 8) + "px";
+  });
+  svg.addEventListener("mouseleave", () => tip.hidden = true);
+}
+// the summary card as a PNG, drawn on a canvas (text only: Steam's art can't be
+// copied into a downloadable image from another site)
+function yirSaveImage(Y) {
+  const c = document.createElement("canvas"), W = 1200, H = 630;
+  c.width = W; c.height = H;
+  const g = c.getContext("2d"), font = s => `${s} system-ui, -apple-system, "Segoe UI", sans-serif`;
+  const bg = g.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, "#173a66"); bg.addColorStop(.7, "#151a33"); bg.addColorStop(1, "#0b0b0d");
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#ffffff"; g.font = font("bold 54px"); g.fillText(`${Y.persona ? Y.persona + "'s " : ""}${Y.year} on Steam`, 70, 120);
+  g.fillStyle = "#c3c2b7"; g.font = font("26px");
+  const whole = Y.w.end.endsWith("12-31");
+  g.fillText(`${whole ? "All year" : fmtDay(Y.w.start) + " to " + fmtDay(Y.w.end)}${Y.prev ? ", compared with " + (Y.year - 1) : ""}`, 70, 165);
+  Y.summary.forEach(([label, value], i) => {
+    const x = 70 + (i % 3) * 360, y = 270 + Math.floor(i / 3) * 150;
+    g.fillStyle = "#c3c2b7"; g.font = font("24px"); g.fillText(label, x, y);
+    g.fillStyle = "#ffffff"; g.font = font("bold 64px"); g.fillText(String(value), x, y + 70);
+  });
+  const lead = Y.cur.ranking[0];
+  g.fillStyle = "#8f8e88"; g.font = font("22px");
+  g.fillText(`${lead ? "Game of the year: " + Y.name(lead) + "   " : ""}Made with Steamshot`, 70, H - 50);
+  c.toBlob(blob => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = `steamshot-${Y.year}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }, "image/png");
+}
+(function wireYir() {
+  $("#yir").onclick = openYirDialog;
+  $("#yirCancel").onclick = () => $("#yirDlg").close();
+  $("#yirGo").onclick = yirStart;
+  $("#yirNext").onclick = () => yirGo(yir.cur + 1);
+  $("#yirPrev").onclick = () => yirGo(yir.cur - 1);
+  $("#yirClose").onclick = yirClose;
+  $("#yirPause").onclick = yirTogglePause;
+  document.addEventListener("keydown", e => {
+    if ($("#show").hidden) return;
+    if (e.key === "ArrowRight") yirGo(yir.cur + 1);
+    else if (e.key === "ArrowLeft") yirGo(yir.cur - 1);
+    else if (e.key === "Escape") yirClose();
+    else if (e.key === " ") { e.preventDefault(); yirTogglePause(); }
+  });
+})();
 
 // ---------- updates ----------
 // The server restarts itself after an update; when it answers with a new

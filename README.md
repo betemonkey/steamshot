@@ -291,6 +291,16 @@ the one you used last. Both show the same data.
 release, games you've never played, disk space, and hours per collection. Below them
 are the changes, playtime per day, and the library as a sortable table.
 
+**★ Year in review** (top right) plays a slideshow of a year, like Steam's own year-end
+replay: hours played, month by month, your top 5 and game of the year, a calendar of
+every day with your longest streak, new games and comebacks, and your collections,
+each compared with the same dates the year before. It ends on a summary card you can
+save as an image. A year still in progress is compared with the same stretch of last
+year, so it's fair. It's built only from the history on your computer, so the first
+comparison appears once you have a year of snapshots.
+
+Behind the page is a faint, tilted wall of your own library's covers.
+
 The **snapshot picker** (top right) shows the library as it was on any stored day.
 With `images = false` the cover art is replaced by the games' names.
 

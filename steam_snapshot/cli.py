@@ -229,6 +229,13 @@ def cmd_schedule(cfg, args):
     return 0
 
 
+def demo_days():
+    """Enough demo history to reach back to 1 January of last year, so Year in
+    review has a full previous year to compare with."""
+    today = datetime.now().date()
+    return (today - today.replace(year=today.year - 1, month=1, day=1)).days + 1
+
+
 def cmd_demo(cfg, args):
     from . import demo
     target = os.path.abspath(args.data_dir or os.path.join(config.PROJECT_DIR, "demo-data"))
@@ -273,7 +280,7 @@ def main(argv=None):
     s = sub.add_parser("schedule", help="print the command that schedules snapshots")
     s.add_argument("--every", type=int, default=30, help="minutes between runs (default 30)")
     s = sub.add_parser("demo", help="generate invented data and open the dashboard on it")
-    s.add_argument("--days", type=int, default=60)
+    s.add_argument("--days", type=int, default=demo_days())
     s.add_argument("--data-dir", help="where to write it (default: ./demo-data)")
     s.add_argument("--port", type=int)
     s.add_argument("--open", action="store_true")

@@ -75,6 +75,9 @@ def generate(data_dir, days=60, seed=7):
                 if h else 0) for a, _, h, *_ in GAMES}
     weights = {a: w for a, *_, w in GAMES}
     late_buy = {1174180: days - 1}  # bought on the last day, so "changes" has one
+    # tastes change: these are played a lot more over the last ~8 months, so a
+    # year-over-year comparison has a story (a new favourite, a comeback)
+    lately = {1551360: 12, 1091500: 4, 292030: 2}
 
     for i in range(days):
         day = now - timedelta(days=days - 1 - i)
@@ -82,9 +85,10 @@ def generate(data_dir, days=60, seed=7):
         sessions = rng.choice([0, 1, 1, 2, 2, 3] + ([3, 4] if weekend else []))
         if i == days - 1:
             sessions = max(sessions, 3)  # the latest snapshot always has some play
-        pool = [a for a, w in weights.items() if w]
+        w_now = {a: lately.get(a, w) if days - i <= 240 else w for a, w in weights.items()}
+        pool = [a for a, w in w_now.items() if w]
         for _ in range(sessions):
-            a = rng.choices(pool, weights=[weights[p] for p in pool])[0]
+            a = rng.choices(pool, weights=[w_now[p] for p in pool])[0]
             minutes[a] += rng.randint(20, 150 if weekend else 90)
             last[a] = int(day.timestamp()) - rng.randint(0, 6 * 3600)
         games = []
