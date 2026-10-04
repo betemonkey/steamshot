@@ -183,9 +183,40 @@ older than a year. Set it to `0` (or remove the line) to keep everything.
 
 ### Moving to a new PC, or using several
 
-Your history lives in the `data/` folder. To move to a new PC, set it up there (steps 1-7)
-and copy the old `data/` folder over before the first snapshot. Several PCs each keep
-their own history; they are not merged.
+Your history lives in the `data/` folder. To move to a new PC, export it on the old one:
+
+```bash
+python -m steam_snapshot export          # writes steamshot-export-<date>.zip
+```
+
+then set Steamshot up on the new PC (steps 1-7) and import the zip there:
+
+```bash
+python -m steam_snapshot import steamshot-export-2026-10-04.zip
+```
+
+Several PCs each keep their own history; they are not merged automatically.
+
+### Export and import
+
+`export` saves every account's snapshots and playtime history into one zip (`--account`
+for just one, `--out` to choose the file). Use it as a backup, or to move to another PC.
+
+`import` merges a file into this install. It takes an export zip, or a bare history file
+in the same shape as `data/<steamid64>/history.json`:
+
+```json
+{"since": "2026-07-14", "days": {"2026-07-15": {"620": 45, "1091500": 120}}}
+```
+
+(minutes played per game per day, by app id), which is how to bring in a playtime history
+another tool recorded. A history file goes to this PC's account, or the one given with
+`--account <steamid64>`.
+
+Importing never overwrites what this install recorded itself. Days from its own first
+snapshot onwards stay as they are, and snapshots it already has are kept; imported days
+only fill in the time before. Running the same import twice changes nothing. The dashboard
+picks the new history up on its next refresh.
 
 ## Configuration
 

@@ -1,4 +1,4 @@
-"""Command line: snapshot, serve, doctor, schedule, demo, init."""
+"""Command line: snapshot, serve, doctor, schedule, demo, init, export, import."""
 import argparse
 import os
 import shlex
@@ -258,6 +258,53 @@ def cmd_init(cfg, args):
     return 0
 
 
+def cmd_export(cfg, args):
+    from . import transfer
+    out = args.out or f"steamshot-export-{datetime.now():%Y-%m-%d}.zip"
+    try:
+        s = transfer.export(cfg["data_dir"], out, args.account)
+    except (transfer.TransferError, OSError) as e:
+        print(f"export failed: {e}", file=sys.stderr)
+        return 1
+    for acct, n in s["snapshots"].items():
+        print(f"exported {acct}: {n} snapshot{'' if n == 1 else 's'} and the playtime history")
+    print(f"  -> {s['path']}")
+    return 0
+
+
+def default_account(cfg):
+    """For a bare history file: this data folder's only account, else the one
+    a snapshot would read."""
+    from . import transfer
+    have = transfer.accounts(cfg["data_dir"])
+    if len(have) == 1:
+        return have[0]
+    root = steamfiles.find_steam_root(cfg["steam"]["path"])
+    acct = steamfiles.pick_account(root, cfg["steam"]["account"]) if root else None
+    return acct["steamid64"] if acct else None
+
+
+def cmd_import(cfg, args):
+    from . import transfer
+    try:
+        account = args.account
+        if not account and not transfer.zipfile.is_zipfile(args.file):
+            account = default_account(cfg)
+        results = transfer.import_file(cfg["data_dir"], args.file, account)
+    except (transfer.TransferError, OSError) as e:
+        print(f"import failed: {e}", file=sys.stderr)
+        return 1
+    for r in results:
+        print(f"imported into {r['account']}: {r['days']} day{'' if r['days'] == 1 else 's'} of history, "
+              f"{r['snapshots']} snapshot{'' if r['snapshots'] == 1 else 's'}"
+              + (f" (history now starts {r['since']})" if r["since"] else ""))
+        if not r["days"] and not r["snapshots"]:
+            print("  nothing new: every day and snapshot in the file was already here")
+    snapshot.log_line(cfg["data_dir"], "import " + os.path.basename(args.file) + ": "
+                      + "; ".join(f"{r['account']} +{r['days']} days +{r['snapshots']} snapshots" for r in results))
+    return 0
+
+
 def main(argv=None):
     if sys.version_info < (3, 11):
         print("steam-snapshot needs Python 3.11 or newer", file=sys.stderr)
@@ -286,6 +333,12 @@ def main(argv=None):
     s.add_argument("--open", action="store_true")
     s.add_argument("--no-serve", action="store_true", help="only write the data")
     sub.add_parser("init", help="create config.toml from the example")
+    s = sub.add_parser("export", help="save snapshots and history to a zip (backup, or to move PCs)")
+    s.add_argument("--out", help="the zip to write (default: steamshot-export-<date>.zip here)")
+    s.add_argument("--account", help="only this SteamID64 (default: every account)")
+    s = sub.add_parser("import", help="merge an export zip, or a history file, into this install")
+    s.add_argument("file", help="a Steamshot export .zip, or a history .json")
+    s.add_argument("--account", help="SteamID64 a history .json belongs to (default: this PC's account)")
     args = p.parse_args(argv)
     try:
         cfg = config.load(args.config)
@@ -293,4 +346,5 @@ def main(argv=None):
         print(f"config error: {e}", file=sys.stderr)
         return 2
     return {"snapshot": cmd_snapshot, "serve": cmd_serve, "doctor": cmd_doctor,
-            "schedule": cmd_schedule, "demo": cmd_demo, "init": cmd_init}[args.cmd](cfg, args)
+            "schedule": cmd_schedule, "demo": cmd_demo, "init": cmd_init,
+            "export": cmd_export, "import": cmd_import}[args.cmd](cfg, args)

@@ -7,12 +7,13 @@ import sys
 import tempfile
 import threading
 import unittest
+import zipfile
 import urllib.request
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from steam_snapshot import __version__, config, demo, snapshot, steamfiles, update  # noqa: E402
+from steam_snapshot import __version__, config, demo, snapshot, steamfiles, transfer, update  # noqa: E402
 from steam_snapshot.server import make_server  # noqa: E402
 from tests import fixtures  # noqa: E402
 
@@ -274,6 +275,76 @@ class UpdateTests(TempDir):
         cfg = self.cfg()
         self.assertEqual(update.run(cfg, now=1000, fetch=boom, pull=self.pull())["status"], "error")
         self.assertFalse(update.status(cfg)["available"])
+
+
+class TransferTests(TempDir):
+    def acct(self, root, aid=demo.DEMO_ID):
+        return snapshot.account_dir(root, aid)
+
+    def test_export_import_round_trip(self):
+        src, dst = os.path.join(self.tmp, "a"), os.path.join(self.tmp, "b")
+        demo.generate(src, days=10)
+        out = transfer.export(src, os.path.join(self.tmp, "x.zip"))
+        self.assertEqual(out["snapshots"], {demo.DEMO_ID: 10})
+        res = transfer.import_file(dst, out["path"])
+        self.assertEqual(res[0]["snapshots"], 10)
+        self.assertEqual(snapshot.snapshot_dates(self.acct(dst)), snapshot.snapshot_dates(self.acct(src)))
+        a = snapshot.read_json(os.path.join(self.acct(src), "history.json"))
+        b = snapshot.read_json(os.path.join(self.acct(dst), "history.json"))
+        self.assertEqual((a["since"], a["days"]), (b["since"], b["days"]))
+        self.assertEqual(b["last"], {})  # never imported: the next run starts a fresh baseline
+        # importing the same file again adds nothing
+        again = transfer.import_file(dst, out["path"])
+        self.assertEqual((again[0]["days"], again[0]["snapshots"]), (0, 0))
+
+    def test_merge_keeps_what_this_install_recorded(self):
+        local = {"since": "2026-03-05", "days": {"2026-03-05": {"10": 30}}, "last": {"10": 500}}
+        incoming = transfer.clean_history({"since": "2026-03-01", "days": {
+            "2026-03-01": {"10": 60, "20": "15", "bad": 5},
+            "2026-03-05": {"10": 999}, "2026-03-06": {"10": 40}, "nonsense": {"10": 1}}})
+        merged, added = transfer.merge_history(local, incoming)
+        self.assertEqual(added, 1)
+        self.assertEqual(merged["since"], "2026-03-01")
+        self.assertEqual(merged["days"], {"2026-03-01": {"10": 60, "20": 15}, "2026-03-05": {"10": 30}})
+        self.assertEqual(merged["last"], {"10": 500})
+
+    def test_bare_history_needs_an_account(self):
+        path = os.path.join(self.tmp, "h.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"since": "2026-01-01", "days": {"2026-01-02": {"620": 45}}}, fh)
+        with self.assertRaises(transfer.TransferError):
+            transfer.import_file(self.tmp, path)
+        res = transfer.import_file(os.path.join(self.tmp, "d"), path, "76561198000000001")
+        self.assertEqual(res[0]["days"], 1)
+        h = snapshot.read_json(os.path.join(self.tmp, "d", "76561198000000001", "history.json"))
+        self.assertEqual(h["days"], {"2026-01-02": {"620": 45}})
+
+    def test_zip_cannot_write_outside_the_data_folder(self):
+        path = os.path.join(self.tmp, "evil.zip")
+        good = json.dumps({"date": "2026-01-01", "games": []})
+        with zipfile.ZipFile(path, "w") as z:
+            z.writestr("../escape.json", "{}")
+            z.writestr("123/../../escape2.json", "{}")
+            z.writestr("123/snapshots/../../escape3.json", "{}")
+            z.writestr("123/other.txt", "x")
+            z.writestr("123/snapshots/2026-01-01.json", good)
+        dst = os.path.join(self.tmp, "data")
+        res = transfer.import_file(dst, path)
+        self.assertEqual(res[0]["snapshots"], 1)
+        for name in ("escape.json", "escape2.json", "escape3.json"):
+            self.assertFalse(os.path.exists(os.path.join(self.tmp, name)))
+        self.assertEqual(sorted(os.listdir(os.path.join(dst, "123"))), ["snapshots"])
+
+    def test_existing_snapshot_is_not_overwritten(self):
+        src, dst = os.path.join(self.tmp, "a"), os.path.join(self.tmp, "b")
+        demo.generate(src, days=3)
+        out = transfer.export(src, os.path.join(self.tmp, "x.zip"))
+        day = snapshot.snapshot_dates(self.acct(src))[-1]
+        mine = os.path.join(self.acct(dst), "snapshots", f"{day}.json")
+        snapshot.write_json(mine, {"date": day, "games": [], "mine": True})
+        res = transfer.import_file(dst, out["path"])
+        self.assertEqual(res[0]["snapshots"], 2)
+        self.assertTrue(snapshot.read_json(mine)["mine"])
 
 
 class ServerTests(TempDir):

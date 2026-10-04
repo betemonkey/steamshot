@@ -5,7 +5,7 @@ Steamshot (`steam_snapshot` package) takes scheduled snapshots of a Steam librar
 ## Commands (Windows dev box: use `py -3`, not `python`)
 
 ```powershell
-py -3 -m unittest discover tests                          # full suite, offline, ~1s (verified: 27 tests)
+py -3 -m unittest discover tests                          # full suite, offline, ~1s (verified: 32 tests)
 py -3 -m unittest tests.test_steam_snapshot.ConfigTests   # one class (verified)
 py -3 -m steam_snapshot demo --open                       # invented data in ./demo-data + dashboard on :8765
 py -3 -m steam_snapshot demo --no-serve --data-dir <dir>  # just generate demo data (verified)
@@ -18,11 +18,12 @@ There's no linter or formatter config. The code has `# noqa: E402/E731` markers,
 
 ## Architecture
 
-- `cli.py`: argparse subcommands (`snapshot serve doctor schedule demo init`). Each `cmd_*` takes `(cfg, args)`. Exit codes: 1 = runtime failure, 2 = config error.
+- `cli.py`: argparse subcommands (`snapshot serve doctor schedule demo init export import`). Each `cmd_*` takes `(cfg, args)`. Exit codes: 1 = runtime failure, 2 = config error.
 - `config.py`: merges TOML over `DEFAULTS`. `PROJECT_DIR` is the repo root. Adds `cfg["data_dir"]` (absolute) and `cfg["_file"]`.
 - `steamfiles.py`: every Steam parser: text VDF (`localconfig.vdf`, `loginusers.vdf`, `.acf`), binary VDF (`appinfo.vdf` v28/v29, `packageinfo.vdf`), and the collections JSON in cloudstorage. `read_library()` combines them into `(games, sources)`.
 - `store.py`: keyless Steam web endpoints (`IStoreBrowseService/GetItems`, `IWishlistService/GetWishlist`, `appdetails`) via urllib. Raises `StoreError`.
 - `snapshot.py`: `take(cfg, now=None)` is the scheduled run: read library, enrich (names/wishlist), write `data/<steamid64>/snapshots/YYYY-MM-DD.json`, update `history.json`, prune past `keep_days`, append to `data/steam-snapshot.log`.
+- `transfer.py`: `export` (zip of `<id>/history.json`, `names.json`, `snapshots/*.json` plus a manifest) and `import` (that zip, or a bare history JSON). Merge rule: days on/after the local `since` and existing snapshot files are never overwritten; `last` is never imported (no fake spike on the next run). Zip members outside that exact layout are ignored (path-traversal safe, tested). Import is CLI-only on purpose: the server stays GET-only.
 - `update.py`: self-update. Throttled (6 h, state in `data/update.json`) check of the version on `origin/main` via `git fetch` (raw.githubusercontent.com fallback for non-checkouts; the repo is private, so that only works if it goes public), then `git pull --ff-only` only for a clean checkout of `main`. Finds Git for Windows even when it's not on PATH, and never lets git prompt. Called from `cmd_snapshot` and from a watcher thread in `cmd_serve` that restarts the server (`relaunch()`) once the version on disk changes; the page polls `/api/version` and reloads when `running` changes.
 - `server.py`: read-only GET server over the data folder (`/api/accounts|snapshots|snapshot|history`) with an mtime-keyed cache. It serves `web/index.html`, a single self-contained page (vanilla JS, light/dark CSS tokens, no external scripts). Colours come from CSS tokens; the header's colour button picks a palette (`ssPalette`: auto, black, steam, slate, forest, ember, light; `?palette=` forces one), and the dark palettes are `html:root[data-skin=...]` token overrides. The page has two layouts on the same data, Shelf (cover art first) and Tiles (bento grid), picked with a header switch and kept in `localStorage` (`ssView`; `?view=tiles` forces one, handy for screenshots). `facts()` computes the shared numbers once; `shelfView()`/`tilesView()` build the markup. Art comes from Steam's CDN with a fallback chain ending in a plain name tile, which is also what `images = false` shows. Design changes go through `mockups/` first (`mockups/redesign/` has the explored directions). The background is a "cover wall" of the library's art (`drawWall`). **Year in review** (`yir*` functions) is a full-screen slideshow built client-side from `history.json` and `/api/snapshots`: a year's window (1 Jan to the snapshot date, or the whole year) against the same dates a year earlier; `?yir=2026&slide=3` opens it paused on a slide for screenshots. `demo` now generates history back to 1 January of last year (`demo_days()`, with a taste shift in the last ~8 months) so the comparison has data.
 - `demo.py`: deterministic fake data under `DEMO_ID = "76500000000000000"`, which is deliberately not a valid SteamID64. The server tests use it.
