@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steamshot: Ledger</title>
+<style>
+/* Direction B: words and numbers first, quiet chrome. One accent: green. */
+:root {
+  color-scheme: light;
+  --page: #fafaf8; --ink: #161615; --ink-2: #5b5a55; --muted: #8f8e88;
+  --line: rgba(22, 22, 21, .10); --soft: #efefeb;
+  --accent: #1d7a4c; --a1: #cfe9da; --a2: #8fcfab; --a3: #3fa572; --a4: #1d7a4c;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #111211; --ink: #eeeeea; --ink-2: #b3b2ab; --muted: #85847e;
+    --line: rgba(255, 255, 255, .09); --soft: #1e1f1e;
+    --accent: #4cc285; --a1: #173826; --a2: #1f6140; --a3: #2f9762; --a4: #5fd394;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #111211; --ink: #eeeeea; --ink-2: #b3b2ab; --muted: #85847e;
+  --line: rgba(255, 255, 255, .09); --soft: #1e1f1e;
+  --accent: #4cc285; --a1: #173826; --a2: #1f6140; --a3: #2f9762; --a4: #5fd394;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px 64px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: .92em; }
+button, select { font: inherit; font-size: 14px; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button:hover, select:hover { background: var(--soft); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mock { position: fixed; right: 12px; bottom: 12px; z-index: 20; font-size: 11px; font-weight: 700; background: #e5a000; color: #111; padding: 3px 8px; border-radius: 6px; }
+
+.top { display: flex; align-items: center; gap: 12px; height: 64px; border-bottom: 1px solid var(--line); }
+.brand { font-weight: 700; }
+.spacer { flex: 1; }
+
+.lead { font-size: clamp(24px, 3.2vw, 34px); line-height: 1.25; letter-spacing: -.015em; margin: 44px 0 10px; max-width: 30ch; font-weight: 600; }
+.lead em { font-style: normal; color: var(--accent); }
+.lead-sub { color: var(--ink-2); max-width: 65ch; margin: 0; }
+
+section { margin-top: 56px; }
+h2 { font-size: 17px; margin: 0 0 4px; letter-spacing: -.01em; }
+.sub { color: var(--ink-2); margin: 0 0 16px; font-size: 14px; }
+
+/* calendar */
+.cal { display: grid; grid-auto-flow: column; grid-template-rows: 14px repeat(7, 1fr); gap: 4px; justify-content: start; overflow-x: auto; padding-bottom: 4px; }
+.cal .mo { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.cal i { width: 16px; height: 16px; border-radius: 3px; background: var(--soft); display: block; }
+.cal i.l1 { background: var(--a1); } .cal i.l2 { background: var(--a2); } .cal i.l3 { background: var(--a3); } .cal i.l4 { background: var(--a4); }
+.cal i.nr { background: repeating-linear-gradient(135deg, var(--soft) 0 3px, transparent 3px 6px); }
+.cal i.fut { background: none; }
+.key { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12.5px; margin-top: 10px; flex-wrap: wrap; }
+.key i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.calrow { display: grid; grid-template-columns: auto 1fr; gap: 40px; align-items: start; }
+.facts { display: grid; gap: 14px; min-width: 170px; }
+.facts b { display: block; font-size: 26px; letter-spacing: -.02em; font-weight: 650; font-variant-numeric: tabular-nums; }
+.facts span { color: var(--ink-2); font-size: 13.5px; }
+
+/* small multiples: one shared scale */
+.rows { display: grid; }
+.row { display: grid; grid-template-columns: minmax(150px, 1.1fr) 2fr 70px 70px; gap: 16px; align-items: center; padding: 9px 0; }
+.row + .row { border-top: 1px solid var(--line); }
+.row .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
+.row svg { display: block; width: 100%; height: 26px; }
+.row .v { text-align: right; }
+.row .v small { display: block; color: var(--muted); font-size: 11.5px; font-family: system-ui, sans-serif; }
+.row.head { color: var(--muted); font-size: 12.5px; padding-bottom: 4px; }
+.row.head + .row { border-top: 0; }
+
+/* collections: bars without tracks */
+.share { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 48px; }
+.share div { display: grid; grid-template-columns: 150px 1fr auto; gap: 12px; align-items: center; }
+.share s { text-decoration: none; height: 8px; background: var(--accent); border-radius: 0 4px 4px 0; display: block; }
+.share .lbl { color: var(--ink-2); }
+
+/* yesterday */
+.today { max-width: 65ch; }
+.today p { margin: 0 0 8px; }
+
+/* library table */
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; }
+tbody tr + tr td { border-top: 1px solid var(--line); }
+th { font-size: 12.5px; color: var(--muted); font-weight: 500; cursor: pointer; user-select: none; white-space: nowrap; }
+th:hover { color: var(--ink); }
+th.r, td.r { text-align: right; }
+td.muted { color: var(--muted); }
+.lib-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+.lib-tools input { font: inherit; font-size: 14px; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; flex: 1 1 220px; }
+.lib-tools label { color: var(--ink-2); font-size: 14px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+
+@media (max-width: 760px) {
+  .calrow { grid-template-columns: 1fr; gap: 20px; }
+  .facts { grid-template-columns: repeat(3, 1fr); }
+  .row { grid-template-columns: 1fr 70px; }
+  .row svg, .row .v.t, .row.head span:nth-child(2), .row.head span:nth-child(4) { display: none; }
+  .share { grid-template-columns: 1fr; }
+  .col-hide { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="mock">MOCKUP B · INVENTED DATA</div>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">Steamshot</span>
+    <span class="spacer"></span>
+    <select aria-label="Snapshot"><option>3 Oct 2026</option></select>
+    <button id="theme" aria-label="Switch light or dark">◐</button>
+  </header>
+
+  <p class="lead" id="lead"></p>
+  <p class="lead-sub" id="leadSub"></p>
+
+  <section>
+    <h2>Every day since the first snapshot</h2>
+    <p class="sub">Darker means more hours. Days before the first snapshot can't be known.</p>
+    <div class="calrow">
+      <div>
+        <div class="cal" id="cal" role="img" aria-label="Hours played per day"></div>
+        <div class="key">less <i style="background:var(--soft)"></i><i style="background:var(--a1)"></i><i style="background:var(--a2)"></i><i style="background:var(--a3)"></i><i style="background:var(--a4)"></i> more
+          <span style="width:12px"></span><i class="nr" style="background:repeating-linear-gradient(135deg,var(--soft) 0 3px,transparent 3px 6px);outline:1px solid var(--line)"></i> not recorded yet</div>
+      </div>
+      <div class="facts" id="facts"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where the time went</h2>
+    <p class="sub">Each game's hours per day since the first snapshot, all on the same scale.</p>
+    <div class="rows" id="rows"></div>
+  </section>
+
+  <section>
+    <h2>By collection</h2>
+    <p class="sub">Total hours per Steam collection.</p>
+    <div class="share" id="share"></div>
+  </section>
+
+  <section class="today">
+    <h2>Since yesterday</h2>
+    <div id="today"></div>
+  </section>
+
+  <section>
+    <h2>Library</h2>
+    <div class="lib-tools">
+      <input type="search" id="q" placeholder="Search games" aria-label="Search games">
+      <label><input type="checkbox" id="inst"> Installed only</label>
+    </div>
+    <table>
+      <thead><tr><th data-k="name">Game</th><th class="r" data-k="minutes">Hours</th><th class="r col-hide" data-k="lastPlayed">Last played</th><th class="col-hide" data-k="col">Collection</th><th class="r col-hide" data-k="bytes">On disk</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </section>
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const D = window.DEMO, $ = s => document.querySelector(s);
+const DAY = 864e5, toUTC = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+const iso = t => new Date(t).toISOString().slice(0, 10);
+const range = (a, b) => { const out = []; for (let t = toUTC(a); t <= toUTC(b); t += DAY) out.push(iso(t)); return out; };
+const day = d => D.days[d] || {};
+const total = d => Object.values(day(d)).reduce((a, b) => a + b, 0);
+const sum = a => a.reduce((x, y) => x + y, 0);
+const fmtH = m => { const h = m / 60; return h >= 100 ? Math.round(h).toLocaleString() : h >= 10 ? h.toFixed(0) : h.toFixed(1); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const fmtD = (s, o) => new Date(toUTC(s)).toLocaleDateString(undefined, {...o, timeZone: "UTC"});
+
+$("#theme").onclick = () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+  document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark";
+};
+
+const back = n => iso(toUTC(D.date) - n * DAY);
+const d30 = range(back(29), D.date), dPrev = range(back(59), back(30)).filter(d => d >= D.since);
+const recorded = range(D.since, D.date);
+const games = D.games.map(g => ({...g, m30: sum(d30.map(d => day(d)[g.appid] || 0)), mAll: sum(recorded.map(d => day(d)[g.appid] || 0))}));
+const m30 = sum(d30.map(total)), mPrev = sum(dPrev.map(total));
+const lead = [...games].sort((a, b) => b.m30 - a.m30)[0];
+const diff = m30 - mPrev;
+
+$("#lead").innerHTML = `You played <em>${fmtH(m30)} hours</em> in the last 30 days, ${diff >= 0 ? `<em>${fmtH(diff)} more</em> than` : `${fmtH(-diff)} fewer than`} the 30 days before.`;
+$("#leadSub").textContent = `Mostly ${lead.name} (${fmtH(lead.m30)} h). ${games.length} games, ${fmtH(sum(games.map(g => g.minutes)))} hours in total.`;
+
+// calendar: weeks as columns, Monday first. Covers the recorded stretch plus two
+// weeks before it, and grows to a full year as snapshots build up.
+(function cal() {
+  const end = toUTC(D.date), endDow = (new Date(end).getUTCDay() + 6) % 7;
+  const WEEKS = Math.min(53, Math.max(12, Math.ceil((end - toUTC(D.since)) / DAY / 7) + 3));
+  const start = end - (endDow + 7 * (WEEKS - 1)) * DAY;
+  const vals = recorded.map(total).filter(Boolean).sort((a, b) => a - b);
+  const q = p => vals[Math.floor(p * (vals.length - 1))] || 1;
+  const cuts = [q(.25), q(.5), q(.75)];
+  let html = "", lastMonth = -1;
+  for (let w = 0; w < WEEKS; w++) {
+    const first = new Date(start + w * 7 * DAY);
+    const m = first.getUTCMonth();
+    html += `<span class="mo">${m !== lastMonth ? first.toLocaleDateString(undefined, {month: "short", timeZone: "UTC"}) : ""}</span>`;
+    lastMonth = m;
+    for (let d = 0; d < 7; d++) {
+      const t = start + (w * 7 + d) * DAY, s = iso(t);
+      if (t > end) { html += `<i class="fut"></i>`; continue; }
+      if (s < D.since) { html += `<i class="nr" title="${fmtD(s, {day: "numeric", month: "short"})}: not recorded yet"></i>`; continue; }
+      const v = total(s), lvl = !v ? "" : v <= cuts[0] ? "l1" : v <= cuts[1] ? "l2" : v <= cuts[2] ? "l3" : "l4";
+      html += `<i class="${lvl}" title="${fmtD(s, {weekday: "short", day: "numeric", month: "short"})}: ${v ? fmtH(v) + " h" : "not played"}"></i>`;
+    }
+  }
+  $("#cal").innerHTML = html;
+
+  // streaks and the biggest day
+  let best = 0, run = 0, cur = 0;
+  recorded.forEach(d => { run = total(d) ? run + 1 : 0; best = Math.max(best, run); });
+  for (let i = recorded.length - 1; i >= 0 && total(recorded[i]); i--) cur++;
+  const big = recorded.reduce((a, d) => total(d) > total(a) ? d : a, recorded[0]);
+  const played = recorded.filter(total).length;
+  $("#facts").innerHTML = `
+    <div><b>${played}/${recorded.length}</b><span>days played</span></div>
+    <div><b>${best} days</b><span>longest streak${cur ? `, ${cur} right now` : ""}</span></div>
+    <div><b>${fmtH(total(big))} h</b><span>biggest day, ${fmtD(big, {weekday: "short", day: "numeric", month: "short"})}</span></div>`;
+})();
+
+// small multiples, shared y-scale
+(function rows() {
+  const top = [...games].filter(g => g.mAll).sort((a, b) => b.mAll - a.mAll).slice(0, 8);
+  const max = Math.max(...top.flatMap(g => recorded.map(d => day(d)[g.appid] || 0)));
+  const W = 400, H = 26, bw = W / recorded.length;
+  $("#rows").innerHTML = `<div class="row head"><span>Game</span><span>${fmtD(D.since, {day: "numeric", month: "short"})} to ${fmtD(D.date, {day: "numeric", month: "short"})}</span><span class="v">30 days</span><span class="v t">Total</span></div>` +
+    top.map(g => {
+      const bars = recorded.map((d, i) => { const v = day(d)[g.appid] || 0; if (!v) return ""; const h = Math.max(2, v / max * H);
+        return `<rect x="${i * bw + .5}" y="${H - h}" width="${Math.max(1, bw - 1)}" height="${h}" rx="1" fill="var(--accent)"><title>${fmtD(d, {day: "numeric", month: "short"})}: ${fmtH(v)} h</title></rect>`; }).join("");
+      return `<div class="row"><span class="n" title="${esc(g.name)}">${esc(g.name)}</span>
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="${esc(g.name)} hours per day">${bars}<line x1="0" x2="${W}" y1="${H - .5}" y2="${H - .5}" stroke="var(--line)"/></svg>
+        <span class="v num">${fmtH(g.m30)} h</span><span class="v t num">${fmtH(g.minutes)} h</span></div>`;
+    }).join("");
+})();
+
+// collections
+(function share() {
+  const by = {};
+  games.forEach(g => (g.collections && g.collections.length ? g.collections : ["Not in a collection"]).forEach(c => by[c] = (by[c] || 0) + g.minutes));
+  const list = Object.entries(by).sort((a, b) => b[1] - a[1]), max = list[0][1];
+  $("#share").innerHTML = list.map(([c, m]) => `<div><span class="lbl">${esc(c)}</span><s style="width:${m / max * 100}%"></s><span class="num">${fmtH(m)} h</span></div>`).join("");
+})();
+
+// since yesterday, as sentences
+(function today() {
+  const t = Object.entries(day(D.date)).sort((a, b) => b[1] - a[1]);
+  const name = id => (games.find(g => g.appid == id) || {}).name || id;
+  const list = t.map(([id, m]) => `${esc(name(id))} (+${fmtH(m)} h)`);
+  $("#today").innerHTML = t.length
+    ? `<p>You played ${list.length > 1 ? list.slice(0, -1).join(", ") + " and " + list[list.length - 1] : list[0]}.</p><p class="sub">Red Dead Redemption 2 is new in your library.</p>`
+    : `<p>Nothing played since the last snapshot.</p>`;
+})();
+
+// library table
+const state = {k: "minutes", dir: -1};
+function table() {
+  const q = $("#q").value.toLowerCase(), inst = $("#inst").checked;
+  const key = g => state.k === "col" ? (g.collections || [""])[0] || "" : g[state.k] || 0;
+  const list = games.filter(g => (!q || g.name.toLowerCase().includes(q)) && (!inst || g.installed))
+    .sort((a, b) => state.k === "name" || state.k === "col" ? state.dir * String(key(a)).localeCompare(String(key(b))) : state.dir * (key(a) - key(b)));
+  $("#tbody").innerHTML = list.map(g => `<tr><td>${esc(g.name)}</td>
+    <td class="r num">${g.minutes ? fmtH(g.minutes) : "<span class='muted'>-</span>"}</td>
+    <td class="r muted col-hide">${g.lastPlayed ? new Date(g.lastPlayed * 1000).toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"}) : "never"}</td>
+    <td class="muted col-hide">${esc((g.collections || []).join(", "))}</td>
+    <td class="r muted num col-hide">${g.installed ? Math.round(g.bytes / 1e9) + " GB" : ""}</td></tr>`).join("");
+}
+document.querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { state.dir = state.k === th.dataset.k ? -state.dir : (th.dataset.k === "name" ? 1 : -1); state.k = th.dataset.k; table(); });
+$("#q").oninput = table; $("#inst").onchange = table;
+table();
+</script>
+</body>
+</html>

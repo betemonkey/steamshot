@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steamshot: Bento</title>
+<style>
+/* Direction C: one tile per question, mixed sizes. One accent: burnt orange. */
+:root {
+  color-scheme: light;
+  --page: #f1f1ef; --tile: #ffffff; --tile-2: #e9e9e5;
+  --ink: #171716; --ink-2: #5a5954; --muted: #8d8c86; --line: rgba(23, 23, 22, .09);
+  --accent: #c2531b; --accent-wash: #fbe9de; --on-accent: #ffffff;
+  --radius: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0e0e0e; --tile: #1a1a19; --tile-2: #242423;
+    --ink: #f1f0ec; --ink-2: #b6b5ae; --muted: #85847e; --line: rgba(255, 255, 255, .08);
+    --accent: #f08a4f; --accent-wash: #3a2416; --on-accent: #1a0f08;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0e0e0e; --tile: #1a1a19; --tile-2: #242423;
+  --ink: #f1f0ec; --ink-2: #b6b5ae; --muted: #85847e; --line: rgba(255, 255, 255, .08);
+  --accent: #f08a4f; --accent-wash: #3a2416; --on-accent: #1a0f08;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 20px 56px; }
+.num { font-variant-numeric: tabular-nums; }
+button, select, input { font: inherit; color: var(--ink); background: var(--tile); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+button, select { cursor: pointer; }
+button:hover, select:hover { background: var(--tile-2); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mock { position: fixed; right: 12px; bottom: 12px; z-index: 20; font-size: 11px; font-weight: 700; background: #e5a000; color: #111; padding: 3px 8px; border-radius: 6px; }
+
+.top { display: flex; align-items: center; gap: 12px; height: 64px; }
+.brand { font-weight: 750; font-size: 17px; }
+.who { color: var(--ink-2); white-space: nowrap; }
+.spacer { flex: 1; }
+
+/* the grid: 12 cells, every one used */
+.bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: minmax(170px, auto); gap: 14px;
+  grid-template-areas: "hero hero m30 streak" "hero hero weeks weeks" "next backlog disk cols"; }
+.t { background: var(--tile); border-radius: var(--radius); padding: 18px 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.t .q { color: var(--ink-2); font-size: 13px; }
+.t .big { font-size: 40px; font-weight: 750; letter-spacing: -.03em; line-height: 1.05; margin-top: 6px; }
+.t .foot { margin-top: auto; color: var(--ink-2); font-size: 13px; }
+.t .foot b { color: var(--ink); }
+
+.hero { grid-area: hero; color: #fff; background: #111 center/cover; justify-content: flex-end; padding: 26px; }
+.hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(8,8,8,.9) 0%, rgba(8,8,8,.35) 55%, rgba(8,8,8,0) 100%); }
+.hero > * { position: relative; }
+.hero .q { color: rgba(255,255,255,.75); }
+.hero h1 { margin: 4px 0 8px; font-size: clamp(30px, 3.6vw, 46px); line-height: 1.05; letter-spacing: -.02em; }
+.hero .stats { display: flex; gap: 28px; flex-wrap: wrap; }
+.hero .stats b { display: block; font-size: 22px; }
+.hero .stats span { color: rgba(255,255,255,.75); font-size: 13px; }
+
+.m30 { grid-area: m30; background: var(--accent); color: var(--on-accent); }
+.m30 .q, .m30 .foot, .m30 .foot b { color: var(--on-accent); opacity: .9; }
+.streak { grid-area: streak; }
+.dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin-top: 14px; }
+.dots i { aspect-ratio: 1; border-radius: 50%; background: var(--tile-2); }
+.dots i.on { background: var(--accent); }
+.weeks { grid-area: weeks; }
+.weeks svg { width: 100%; height: 110px; display: block; margin-top: 8px; overflow: visible; }
+.weeks .tick { fill: var(--muted); font-size: 11px; }
+.weeks .val { fill: var(--ink-2); font-size: 11px; }
+
+.next { grid-area: next; color: #fff; background: #222 center/cover; }
+.next::before { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(8,8,8,.88), rgba(8,8,8,.25)); }
+.next > * { position: relative; }
+.next .q, .next .foot { color: rgba(255,255,255,.8); }
+.next.noart { color: var(--ink); background: var(--accent-wash); }
+.next.noart::before { display: none; }
+.next.noart .q, .next.noart .foot { color: var(--ink-2); }
+
+.backlog { grid-area: backlog; }
+.covers { display: flex; margin-top: auto; padding-top: 10px; }
+.covers img { width: 64px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 6px; border: 2px solid var(--tile); background: var(--tile-2); }
+.covers img + img { margin-left: -16px; }
+.disk { grid-area: disk; }
+.cols { grid-area: cols; }
+.cols .r { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-top: 8px; font-size: 13px; }
+.cols .r s { grid-column: 1 / -1; text-decoration: none; height: 5px; border-radius: 0 3px 3px 0; background: var(--accent); display: block; }
+.cols .r span:last-of-type { color: var(--ink-2); }
+
+/* library: two columns of rows */
+.libh { display: flex; align-items: center; gap: 12px; margin: 40px 0 14px; flex-wrap: wrap; }
+.libh h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.libh input { flex: 0 1 280px; }
+.lib { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+.g { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.g img { width: 92px; height: 34px; object-fit: cover; border-radius: 6px; background: var(--tile-2); }
+.g .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g .n small { display: block; color: var(--muted); font-size: 12px; }
+.g .h { font-weight: 650; }
+
+@media (max-width: 900px) {
+  .bento { grid-template-columns: 1fr 1fr; grid-template-areas: "hero hero" "hero hero" "m30 streak" "weeks weeks" "next backlog" "disk cols"; }
+  .lib { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="mock">MOCKUP C · INVENTED DATA</div>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">Steamshot</span>
+    <span class="who" id="who"></span>
+    <span class="spacer"></span>
+    <select aria-label="Snapshot"><option>3 Oct 2026</option></select>
+    <button id="theme" aria-label="Switch light or dark">◐</button>
+  </header>
+
+  <div class="bento">
+    <div class="t hero" id="hero">
+      <div class="q">You're mostly playing</div>
+      <h1 id="heroName"></h1>
+      <div class="stats" id="heroStats"></div>
+    </div>
+    <div class="t m30"><div class="q">Last 30 days</div><div class="big num" id="m30"></div><div class="foot" id="m30d"></div></div>
+    <div class="t streak"><div class="q">Days in a row</div><div class="big num" id="streak"></div><div class="dots" id="dots" aria-label="Played or not, last 14 days"></div><div class="foot" id="streakd" style="margin-top:10px"></div></div>
+    <div class="t weeks"><div class="q">Hours per week</div><svg id="weeks" preserveAspectRatio="none"></svg></div>
+    <div class="t next" id="next"><div class="q">Next on your wishlist</div><div class="big num" id="nextDays"></div><div class="foot" id="nextName"></div></div>
+    <div class="t backlog"><div class="q">Never played</div><div class="big num" id="never"></div><div class="covers" id="covers"></div></div>
+    <div class="t disk"><div class="q">Installed</div><div class="big num" id="disk"></div><div class="foot" id="diskd"></div></div>
+    <div class="t cols"><div class="q">Hours by collection</div><div id="cols"></div></div>
+  </div>
+
+  <div class="libh"><h2>Library</h2><span class="who" id="libCount"></span><span class="spacer"></span><input type="search" id="q" placeholder="Search games" aria-label="Search games"></div>
+  <div class="lib" id="lib"></div>
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const D = window.DEMO, $ = s => document.querySelector(s);
+const DAY = 864e5, toUTC = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+const iso = t => new Date(t).toISOString().slice(0, 10);
+const back = n => iso(toUTC(D.date) - n * DAY);
+const range = (a, b) => { const o = []; for (let t = toUTC(a); t <= toUTC(b); t += DAY) o.push(iso(t)); return o; };
+const day = d => D.days[d] || {};
+const total = d => Object.values(day(d)).reduce((a, b) => a + b, 0);
+const sum = a => a.reduce((x, y) => x + y, 0);
+const fmtH = m => { const h = m / 60; return h >= 100 ? Math.round(h).toLocaleString() : h >= 10 ? h.toFixed(0) : h.toFixed(1); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const art = (id, kind) => `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${id}/${kind}`;
+
+$("#theme").onclick = () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+  document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark";
+};
+
+const d30 = range(back(29), D.date), dPrev = range(back(59), back(30)).filter(d => d >= D.since);
+const games = D.games.map(g => ({...g, m30: sum(d30.map(d => day(d)[g.appid] || 0))}));
+const name = id => (games.find(g => g.appid == id) || {}).name || id;
+$("#who").textContent = D.persona;
+
+// hero
+const lead = [...games].sort((a, b) => b.m30 - a.m30)[0];
+const leadDays = d30.filter(d => day(d)[lead.appid]).length;
+$("#hero").style.backgroundImage = `url(${art(lead.appid, "library_hero.jpg")}), url(${art(lead.appid, "header.jpg")})`;
+$("#heroName").textContent = lead.name;
+$("#heroStats").innerHTML = `<div><b class="num">${fmtH(lead.m30)} h</b><span>last 30 days</span></div>
+  <div><b class="num">${leadDays}</b><span>days played</span></div><div><b class="num">${fmtH(lead.minutes)} h</b><span>in total</span></div>`;
+
+// 30 days
+const m30 = sum(d30.map(total)), mPrev = sum(dPrev.map(total)), diff = m30 - mPrev;
+$("#m30").textContent = `${fmtH(m30)} h`;
+$("#m30d").innerHTML = `<b>${diff >= 0 ? "+" : "-"}${fmtH(Math.abs(diff))} h</b> on the 30 days before`;
+
+// streak + last 14 days as dots (played / not played)
+const rec = range(D.since, D.date);
+let best = 0, run = 0, cur = 0;
+rec.forEach(d => { run = total(d) ? run + 1 : 0; best = Math.max(best, run); });
+for (let i = rec.length - 1; i >= 0 && total(rec[i]); i--) cur++;
+$("#streak").textContent = `${cur} ${cur === 1 ? "day" : "days"}`;
+$("#dots").innerHTML = range(back(13), D.date).map(d => `<i class="${total(d) ? "on" : ""}" title="${d}: ${total(d) ? fmtH(total(d)) + " h" : "not played"}"></i>`).join("");
+$("#streakd").innerHTML = `Longest so far: <b>${best} days</b>`;
+
+// hours per week, last 8 full-or-partial weeks since the first snapshot
+(function weeks() {
+  const W = 520, H = 110, B = 18, T = 14, n = 8, list = [];
+  for (let w = n - 1; w >= 0; w--) {
+    const days = range(back(w * 7 + 6), back(w * 7)).filter(d => d >= D.since);
+    list.push({label: new Date(toUTC(back(w * 7 + 6))).toLocaleDateString(undefined, {day: "numeric", month: "short", timeZone: "UTC"}), v: sum(days.map(total)), rec: days.length});
+  }
+  const max = Math.max(...list.map(x => x.v), 1), gw = W / n, bw = gw * .58;
+  $("#weeks").setAttribute("viewBox", `0 0 ${W} ${H}`);
+  $("#weeks").innerHTML = list.map((x, i) => {
+    const h = x.v / max * (H - B - T), X = i * gw + (gw - bw) / 2, r = Math.min(4, h);
+    const bar = x.rec ? (h ? `<path fill="var(--accent)" d="M${X},${H - B} V${H - B - h + r} q0,-${r} ${r},-${r} H${X + bw - r} q${r},0 ${r},${r} V${H - B} Z"><title>Week of ${x.label}: ${fmtH(x.v)} h</title></path>` : "")
+      : `<rect x="${X}" y="${T}" width="${bw}" height="${H - B - T}" rx="4" fill="var(--tile-2)"><title>Week of ${x.label}: not recorded yet</title></rect>`;
+    const val = x.rec && x.v ? `<text class="val" x="${X + bw / 2}" y="${H - B - h - 4}" text-anchor="middle">${fmtH(x.v)}</text>` : "";
+    return bar + val + `<text class="tick" x="${X + bw / 2}" y="${H - 3}" text-anchor="middle">${x.label}</text>`;
+  }).join("");
+})();
+
+// next wishlist release
+(function next() {
+  const w = D.wishlist.filter(x => x.comingSoon && x.releaseISO).sort((a, b) => a.releaseISO < b.releaseISO ? -1 : 1)[0];
+  const n = Math.round((toUTC(w.releaseISO) - toUTC(D.date)) / DAY);
+  $("#nextDays").textContent = n <= 0 ? "Out now" : `${n} ${n === 1 ? "day" : "days"}`;
+  $("#nextName").innerHTML = `<b>${esc(w.name)}</b><br>${esc(w.release)}`;
+  // plain accent tile until (unless) the game's art loads
+  const probe = new Image();
+  $("#next").classList.add("noart");
+  probe.onload = () => { $("#next").classList.remove("noart"); $("#next").style.backgroundImage = `url(${probe.src})`; };
+  probe.src = art(w.appid, "header.jpg");
+})();
+
+// backlog, disk, collections
+const never = games.filter(g => !g.minutes);
+$("#never").textContent = never.length;
+$("#covers").innerHTML = never.slice(0, 5).map(g => `<img alt="${esc(g.name)}" title="${esc(g.name)}" src="${art(g.appid, "library_600x900.jpg")}" onerror="this.onerror=null;this.src='${art(g.appid, "header.jpg")}'">`).join("");
+const inst = games.filter(g => g.installed).sort((a, b) => (b.bytes || 0) - (a.bytes || 0));
+$("#disk").textContent = `${Math.round(sum(inst.map(g => g.bytes || 0)) / 1e9)} GB`;
+$("#diskd").innerHTML = `${inst.length} games. Biggest: <b>${esc(inst[0].name)}</b>, ${Math.round(inst[0].bytes / 1e9)}&nbsp;GB`;
+(function cols() {
+  const by = {};
+  games.forEach(g => (g.collections || []).forEach(c => by[c] = (by[c] || 0) + g.minutes));
+  const list = Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 4), max = list[0][1];
+  $("#cols").innerHTML = list.map(([c, m]) => `<div class="r"><span>${esc(c)}</span><span class="num">${fmtH(m)} h</span><s style="width:${m / max * 100}%"></s></div>`).join("");
+})();
+
+// library
+function lib() {
+  const q = $("#q").value.toLowerCase();
+  const list = games.filter(g => !q || g.name.toLowerCase().includes(q)).sort((a, b) => b.minutes - a.minutes);
+  $("#libCount").textContent = `${list.length} games`;
+  $("#lib").innerHTML = list.map(g => `<div class="g"><img loading="lazy" alt="" src="${art(g.appid, "capsule_231x87.jpg")}" onerror="this.style.visibility='hidden'">
+    <span class="n">${esc(g.name)}<small>${g.lastPlayed ? "Last played " + new Date(g.lastPlayed * 1000).toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"}) : "Never played"}</small></span>
+    <span class="h num">${g.minutes ? fmtH(g.minutes) + " h" : ""}</span></div>`).join("");
+}
+$("#q").oninput = lib;
+lib();
+</script>
+</body>
+</html>

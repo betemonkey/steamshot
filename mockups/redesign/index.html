@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steamshot redesigns</title>
+<style>
+:root { color-scheme: light; --page: #f4f4f2; --ink: #161615; --ink-2: #5a5954; --line: rgba(22,22,21,.12); --on: #161615; --on-ink: #fff; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { color-scheme: dark; --page: #101010; --ink: #f0f0ec; --ink-2: #b4b3ad; --line: rgba(255,255,255,.12); --on: #f0f0ec; --on-ink: #101010; }
+}
+:root[data-theme="dark"] { color-scheme: dark; --page: #101010; --ink: #f0f0ec; --ink-2: #b4b3ad; --line: rgba(255,255,255,.12); --on: #f0f0ec; --on-ink: #101010; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; display: grid; grid-template-rows: auto 1fr; height: 100dvh; }
+nav { display: flex; gap: 8px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+nav b { margin-right: 8px; }
+nav button { font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+nav button[aria-pressed="true"] { background: var(--on); color: var(--on-ink); border-color: transparent; }
+nav .note { color: var(--ink-2); margin-left: auto; }
+iframe { width: 100%; height: 100%; border: 0; display: block; }
+</style>
+</head>
+<body>
+<nav>
+  <b>Steamshot redesigns</b>
+  <button data-src="d-toggle.html" aria-pressed="true">A + C toggle</button>
+  <button data-src="a-shelf.html">A. Shelf</button>
+  <button data-src="b-ledger.html">B. Ledger</button>
+  <button data-src="c-bento.html">C. Bento</button>
+  <button data-src="http://127.0.0.1:8765/">Today's dashboard</button>
+  <span class="note" id="note"></span>
+</nav>
+<iframe id="view" src="d-toggle.html" title="Mockup"></iframe>
+<script>
+const NOTES = {
+  "d-toggle.html": "Shelf and Tiles in one page: switch in the header, remembered for next time.",
+  "a-shelf.html": "Cover art first: the game you're on, a shelf of recent games, the library as covers.",
+  "b-ledger.html": "Words and numbers first: a sentence, a calendar of every day, one row per game.",
+  "c-bento.html": "One tile per question: what, how much, streak, what's next, what's untouched.",
+  "http://127.0.0.1:8765/": "The current page. Needs `python -m steam_snapshot demo` running.",
+};
+const view = document.getElementById("view"), note = document.getElementById("note");
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  view.src = b.dataset.src; note.textContent = NOTES[b.dataset.src];
+});
+note.textContent = NOTES["d-toggle.html"];
+</script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steamshot: Shelf or Tiles</title>
+<style>
+/* A (Shelf) and C (Tiles) as two views of one page, switched in the header.
+   One accent for the whole app: the current blue. */
+:root {
+  color-scheme: light;
+  --page: #f2f2f0; --surface: #ffffff; --raise: #e9e9e5;
+  --ink: #151514; --ink-2: #56554f; --muted: #8a8983;
+  --line: rgba(21, 21, 20, .10); --grid: #e3e2dc;
+  --accent: #2a78d6; --accent-wash: #e1ecfa; --on-accent: #ffffff;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0e0e0f; --surface: #19191a; --raise: #242425;
+    --ink: #f1f1ef; --ink-2: #b7b6b0; --muted: #85847f;
+    --line: rgba(255, 255, 255, .09); --grid: #2a2a2c;
+    --accent: #3987e5; --accent-wash: #17263a; --on-accent: #08121f;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0e0e0f; --surface: #19191a; --raise: #242425;
+  --ink: #f1f1ef; --ink-2: #b7b6b0; --muted: #85847f;
+  --line: rgba(255, 255, 255, .09); --grid: #2a2a2c;
+  --accent: #3987e5; --accent-wash: #17263a; --on-accent: #08121f;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 20px 56px; }
+.num { font-variant-numeric: tabular-nums; }
+button, select, input { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+button, select { cursor: pointer; }
+button:hover, select:hover { background: var(--raise); }
+button:active { transform: translateY(1px); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mock { position: fixed; right: 12px; bottom: 12px; z-index: 20; font-size: 11px; font-weight: 700; background: #e5a000; color: #111; padding: 3px 8px; border-radius: 6px; }
+
+/* header + the view switch */
+.top { display: flex; align-items: center; gap: 12px; height: 64px; }
+.brand { font-weight: 700; font-size: 17px; }
+.who { color: var(--ink-2); white-space: nowrap; }
+.spacer { flex: 1; }
+.switch { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--raise); }
+.switch button { border: 0; background: none; border-radius: 999px; padding: 5px 14px; color: var(--ink-2); font-weight: 600; }
+.switch button:hover { background: none; color: var(--ink); }
+.switch button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* only the chosen view shows; a short fade marks the change */
+.view { display: none; }
+html[data-view="shelf"] #shelfView, html[data-view="tiles"] #tilesView { display: block; animation: fade .25s cubic-bezier(.16,1,.3,1); }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { html[data-view] .view { animation: none; } }
+
+/* shared bits */
+.h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.h h2 { margin: 0; font-size: 18px; letter-spacing: -.01em; }
+.h .sub { color: var(--ink-2); }
+section { margin-top: 34px; }
+.noart { display: grid; place-items: center; padding: 12px; text-align: center; color: var(--ink-2); font-weight: 600; }
+.noart::after { content: attr(data-name); }
+.tick { fill: var(--muted); font-size: 11px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 8px 24px rgba(0,0,0,.18); display: none; min-width: 150px; z-index: 5; }
+.tip b { display: block; }
+.tip div { display: flex; justify-content: space-between; gap: 12px; color: var(--ink-2); }
+.search { border-radius: 999px; padding: 6px 14px; flex: 0 1 260px; }
+
+/* ===== Shelf view ===== */
+.s-hero { position: relative; border-radius: var(--radius); overflow: hidden; min-height: 300px; background: #111 center/cover no-repeat; display: grid; grid-template-columns: 1.2fr 1fr; align-items: end; color: #fff; }
+.s-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,12,.88) 0%, rgba(10,10,12,.55) 45%, rgba(10,10,12,.05) 100%); }
+.s-hero > * { position: relative; }
+.s-hero .copy { padding: 28px 30px; }
+.s-hero .lbl { color: rgba(255,255,255,.75); font-size: 13px; }
+.s-hero h1 { margin: 4px 0 6px; font-size: clamp(28px, 4vw, 44px); line-height: 1.05; letter-spacing: -.02em; }
+.s-hero .facts { color: rgba(255,255,255,.85); font-size: 15px; }
+.s-hero .facts b { color: #fff; }
+.s-hero .spark { padding: 24px 30px; }
+.s-hero .spark svg { width: 100%; height: 70px; display: block; }
+.s-hero .spark .cap { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 4px; }
+.shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 14px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
+.cv { scroll-snap-align: start; min-width: 0; }
+.cv .art { aspect-ratio: 2 / 3; border-radius: 10px; background: var(--raise); overflow: hidden; transition: transform .2s cubic-bezier(.16,1,.3,1); }
+.cv:hover .art { transform: translateY(-3px); }
+.cv .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cv .nm { margin-top: 8px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv .mt { color: var(--ink-2); font-size: 13px; }
+.cv .mt b { color: var(--ink); }
+.s-split { display: grid; grid-template-columns: 2.2fr 1fr; gap: 28px; align-items: start; }
+.s-chart { position: relative; }
+.s-chart svg { display: block; width: 100%; height: 260px; overflow: visible; }
+.figs { display: grid; gap: 16px; padding-top: 6px; }
+.fig .v { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.fig .l { color: var(--ink-2); }
+.fig .d { color: var(--muted); font-size: 12.5px; }
+.wish { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.wi .art { aspect-ratio: 460 / 215; border-radius: 10px; background: var(--raise); overflow: hidden; }
+.wi .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wi .nm { margin-top: 8px; font-weight: 600; }
+.wi .mt { color: var(--ink-2); font-size: 13px; }
+.soon { color: var(--accent); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.chips button { border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+.chips button[aria-pressed="true"] { background: var(--accent-wash); border-color: transparent; }
+.covergrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 18px 14px; }
+
+/* ===== Tiles view ===== */
+.bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: minmax(170px, auto); gap: 14px;
+  grid-template-areas: "hero hero m30 streak" "hero hero weeks weeks" "next backlog disk cols"; }
+.tile { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.tile .q { color: var(--ink-2); font-size: 13px; }
+.tile .big { font-size: 40px; font-weight: 750; letter-spacing: -.03em; line-height: 1.05; margin-top: 6px; }
+.tile .foot { margin-top: auto; color: var(--ink-2); font-size: 13px; }
+.tile .foot b { color: var(--ink); }
+.b-hero { grid-area: hero; color: #fff; background: #111 center/cover; justify-content: flex-end; padding: 26px; }
+.b-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(8,8,8,.9) 0%, rgba(8,8,8,.35) 55%, rgba(8,8,8,0) 100%); }
+.b-hero > * { position: relative; }
+.b-hero .q { color: rgba(255,255,255,.75); }
+.b-hero h1 { margin: 4px 0 8px; font-size: clamp(30px, 3.6vw, 46px); line-height: 1.05; letter-spacing: -.02em; }
+.b-hero .stats { display: flex; gap: 28px; flex-wrap: wrap; }
+.b-hero .stats b { display: block; font-size: 22px; }
+.b-hero .stats span { color: rgba(255,255,255,.75); font-size: 13px; }
+.b-m30 { grid-area: m30; background: var(--accent); color: var(--on-accent); }
+.b-m30 .q, .b-m30 .foot, .b-m30 .foot b { color: var(--on-accent); opacity: .92; }
+.b-streak { grid-area: streak; }
+.dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin-top: 14px; }
+.dots i { aspect-ratio: 1; border-radius: 50%; background: var(--raise); }
+.dots i.on { background: var(--accent); }
+.b-weeks { grid-area: weeks; }
+.b-weeks svg { width: 100%; height: 110px; display: block; margin-top: 8px; overflow: visible; }
+.b-weeks .val { fill: var(--ink-2); font-size: 11px; }
+.b-next { grid-area: next; color: #fff; background: #222 center/cover; }
+.b-next::before { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(8,8,8,.88), rgba(8,8,8,.25)); }
+.b-next > * { position: relative; }
+.b-next .q, .b-next .foot { color: rgba(255,255,255,.8); }
+.b-next.plain { color: var(--ink); background: var(--accent-wash); }
+.b-next.plain::before { display: none; }
+.b-next.plain .q, .b-next.plain .foot { color: var(--ink-2); }
+.b-backlog { grid-area: backlog; }
+.stack { display: flex; margin-top: auto; padding-top: 10px; }
+.stack img { width: 64px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 6px; border: 2px solid var(--surface); background: var(--raise); }
+.stack img + img { margin-left: -16px; }
+.b-disk { grid-area: disk; }
+.b-cols { grid-area: cols; }
+.b-cols .r { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-top: 8px; font-size: 13px; }
+.b-cols .r s { grid-column: 1 / -1; text-decoration: none; height: 5px; border-radius: 0 3px 3px 0; background: var(--accent); display: block; }
+.b-cols .r span:last-of-type { color: var(--ink-2); }
+.rows2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+.gr { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.gr img { width: 92px; height: 34px; object-fit: cover; border-radius: 6px; background: var(--raise); }
+.gr .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gr .n small { display: block; color: var(--muted); font-size: 12px; }
+.gr .hh { font-weight: 650; }
+
+@media (max-width: 900px) {
+  .s-hero { grid-template-columns: 1fr; } .s-hero .spark { display: none; }
+  .s-split { grid-template-columns: 1fr; } .figs { grid-template-columns: repeat(2, 1fr); }
+  .wish { grid-template-columns: repeat(2, 1fr); }
+  .bento { grid-template-columns: 1fr 1fr; grid-template-areas: "hero hero" "hero hero" "m30 streak" "weeks weeks" "next backlog" "disk cols"; }
+  .rows2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) { .who { display: none; } }
+@media (prefers-reduced-motion: reduce) { .cv .art { transition: none; } }
+</style>
+</head>
+<body>
+<div class="mock">MOCKUP · INVENTED DATA</div>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">Steamshot</span>
+    <span class="who" id="who"></span>
+    <span class="spacer"></span>
+    <div class="switch" role="group" aria-label="Layout">
+      <button data-view="shelf">Shelf</button>
+      <button data-view="tiles">Tiles</button>
+    </div>
+    <select aria-label="Snapshot"><option>3 Oct 2026</option></select>
+    <button id="theme" aria-label="Switch light or dark">◐</button>
+  </header>
+
+  <!-- ===== Shelf ===== -->
+  <div class="view" id="shelfView">
+    <div class="s-hero" id="sHero">
+      <div class="copy"><div class="lbl">Most played this month</div><h1 id="sHeroName"></h1><div class="facts" id="sHeroFacts"></div></div>
+      <div class="spark"><svg id="sSpark" preserveAspectRatio="none"></svg><div class="cap">Hours per day, last 30 days</div></div>
+    </div>
+    <section><div class="h"><h2>Played lately</h2><span class="sub">last 30 days, most hours first</span></div><div class="shelf" id="sShelf"></div></section>
+    <section class="s-split">
+      <div><div class="h"><h2>Playtime per day</h2><span class="sub" id="sChartSub"></span></div><div class="s-chart" id="sChart"><div class="tip" id="sTip"></div></div></div>
+      <div class="figs" id="sFigs"></div>
+    </section>
+    <section><div class="h"><h2>Coming up on your wishlist</h2></div><div class="wish" id="sWish"></div></section>
+    <section><div class="h"><h2>Library</h2><span class="sub" id="sCount"></span></div><div class="chips" id="sChips"></div><div class="covergrid" id="sLib"></div></section>
+  </div>
+
+  <!-- ===== Tiles ===== -->
+  <div class="view" id="tilesView">
+    <div class="bento">
+      <div class="tile b-hero" id="bHero"><div class="q">You're mostly playing</div><h1 id="bHeroName"></h1><div class="stats" id="bHeroStats"></div></div>
+      <div class="tile b-m30"><div class="q">Last 30 days</div><div class="big num" id="bM30"></div><div class="foot" id="bM30d"></div></div>
+      <div class="tile b-streak"><div class="q">Days in a row</div><div class="big num" id="bStreak"></div><div class="dots" id="bDots" aria-label="Played or not, last 14 days"></div><div class="foot" id="bStreakd" style="margin-top:10px"></div></div>
+      <div class="tile b-weeks"><div class="q">Hours per week</div><svg id="bWeeks" preserveAspectRatio="none"></svg></div>
+      <div class="tile b-next plain" id="bNext"><div class="q">Next on your wishlist</div><div class="big num" id="bNextDays"></div><div class="foot" id="bNextName"></div></div>
+      <div class="tile b-backlog"><div class="q">Never played</div><div class="big num" id="bNever"></div><div class="stack" id="bStack"></div></div>
+      <div class="tile b-disk"><div class="q">Installed</div><div class="big num" id="bDisk"></div><div class="foot" id="bDiskd"></div></div>
+      <div class="tile b-cols"><div class="q">Hours by collection</div><div id="bCols"></div></div>
+    </div>
+    <section><div class="h"><h2>Library</h2><span class="sub" id="bCount"></span><span class="spacer"></span><input type="search" class="search" id="bQ" placeholder="Search games" aria-label="Search games"></div><div class="rows2" id="bLib"></div></section>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const D = window.DEMO, $ = s => document.querySelector(s);
+const DAY = 864e5, toUTC = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+const iso = t => new Date(t).toISOString().slice(0, 10);
+const back = n => iso(toUTC(D.date) - n * DAY);
+const range = (a, b) => { const o = []; for (let t = toUTC(a); t <= toUTC(b); t += DAY) o.push(iso(t)); return o; };
+const day = d => D.days[d] || {};
+const total = d => Object.values(day(d)).reduce((a, b) => a + b, 0);
+const sum = a => a.reduce((x, y) => x + y, 0);
+const fmtH = m => { const h = m / 60; return h >= 100 ? Math.round(h).toLocaleString() : h >= 10 ? h.toFixed(0) : h.toFixed(1); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const fmtD = (s, o) => new Date(toUTC(s)).toLocaleDateString(undefined, {...o, timeZone: "UTC"});
+const art = (id, kind) => `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${id}/${kind}`;
+// cover art, then a second art size, then the game's name on a plain tile
+const img = (id, kind, fb) => `<img loading="lazy" alt="" src="${art(id, kind)}" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='${art(id, fb)}'}else{this.parentNode.classList.add('noart');this.remove()}">`;
+const ago = t => { const d = Math.round((toUTC(D.date) + DAY - t * 1000) / DAY); return d <= 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`; };
+function remember(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function recall(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+// ---------- theme + view switch ----------
+$("#theme").onclick = () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+  document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark";
+};
+function setView(v) {
+  document.documentElement.dataset.view = v;
+  document.querySelectorAll(".switch button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
+  remember("ssView", v);
+}
+document.querySelectorAll(".switch button").forEach(b => b.onclick = () => setView(b.dataset.view));
+setView(new URLSearchParams(location.search).get("view") || recall("ssView") || "shelf");
+
+// ---------- shared numbers ----------
+const d30 = range(back(29), D.date), dPrev = range(back(59), back(30)).filter(d => d >= D.since);
+const games = D.games.map(g => ({...g, m30: sum(d30.map(d => day(d)[g.appid] || 0))}));
+const recent = games.filter(g => g.m30 > 0).sort((a, b) => b.m30 - a.m30);
+const lead = recent[0];
+const m30 = sum(d30.map(total)), mPrev = sum(dPrev.map(total)), diff = m30 - mPrev;
+const never = games.filter(g => !g.minutes), inst = games.filter(g => g.installed).sort((a, b) => (b.bytes || 0) - (a.bytes || 0));
+const diskGB = Math.round(sum(inst.map(g => g.bytes || 0)) / 1e9);
+const upcoming = D.wishlist.filter(w => w.comingSoon).sort((a, b) => (a.releaseISO || "9") < (b.releaseISO || "9") ? -1 : 1);
+const daysTo = w => w.releaseISO ? Math.round((toUTC(w.releaseISO) - toUTC(D.date)) / DAY) : null;
+$("#who").textContent = D.persona;
+
+// ---------- Shelf ----------
+$("#sHero").style.backgroundImage = `url(${art(lead.appid, "library_hero.jpg")}), url(${art(lead.appid, "header.jpg")})`;
+$("#sHeroName").textContent = lead.name;
+$("#sHeroFacts").innerHTML = `<b class="num">${fmtH(lead.m30)} h</b> in the last 30 days, <b class="num">${fmtH(lead.minutes)} h</b> in total. Last played ${ago(lead.lastPlayed)}.`;
+(function spark() {
+  const vals = d30.map(d => day(d)[lead.appid] || 0), max = Math.max(...vals, 1), W = 300, H = 70, bw = W / vals.length;
+  $("#sSpark").setAttribute("viewBox", `0 0 ${W} ${H}`);
+  $("#sSpark").innerHTML = vals.map((v, i) => v ? `<rect x="${i * bw + 1}" y="${H - v / max * H}" width="${bw - 2}" height="${v / max * H}" rx="2" fill="rgba(255,255,255,.85)"><title>${fmtD(d30[i], {day: "numeric", month: "short"})}: ${fmtH(v)} h</title></rect>` : "").join("");
+})();
+const coverCard = (g, line) => `<div class="cv"><div class="art" data-name="${esc(g.name)}">${img(g.appid, "library_600x900.jpg", "header.jpg")}</div><div class="nm" title="${esc(g.name)}">${esc(g.name)}</div><div class="mt">${line}</div></div>`;
+$("#sShelf").innerHTML = recent.slice(0, 10).map(g => coverCard(g, `<b class="num">${fmtH(g.m30)} h</b> this month`)).join("");
+(function chart() {
+  const vals = d30.map(total), max = Math.ceil(Math.max(...vals) / 120) * 120 || 120;
+  const W = 760, H = 260, L = 30, B = 22, gw = (W - L) / vals.length, bw = gw - 3, y = v => (H - B) * (1 - v / max);
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Hours played per day, last 30 days">`;
+  for (let h = 0; h <= max / 60; h += 2) s += `<line x1="${L}" x2="${W}" y1="${y(h * 60)}" y2="${y(h * 60)}" stroke="var(--grid)"/><text class="tick" x="${L - 6}" y="${y(h * 60) + 4}" text-anchor="end">${h}h</text>`;
+  vals.forEach((v, i) => {
+    const x = L + i * gw + 1.5;
+    if (v) { const h = H - B - y(v), r = Math.min(4, h); s += `<path fill="var(--accent)" d="M${x},${H - B} V${y(v) + r} q0,-${r} ${r},-${r} H${x + bw - r} q${r},0 ${r},${r} V${H - B} Z"/>`; }
+    if (i % 7 === 0 || (i === vals.length - 1 && i % 7 > 2)) s += `<text class="tick" x="${x + bw / 2}" y="${H - 5}" text-anchor="middle">${fmtD(d30[i], {day: "numeric", month: "short"})}</text>`;
+    s += `<rect data-i="${i}" x="${L + i * gw}" y="0" width="${gw}" height="${H - B}" fill="transparent"/>`;
+  });
+  $("#sChart").insertAdjacentHTML("afterbegin", s + "</svg>");
+  $("#sChartSub").textContent = `${vals.filter(Boolean).length} of 30 days played`;
+  const tip = $("#sTip");
+  $("#sChart svg").addEventListener("mousemove", e => {
+    const i = e.target.dataset.i; if (i == null) return;
+    const rows = Object.entries(day(d30[i])).sort((a, b) => b[1] - a[1]).slice(0, 4)
+      .map(([id, m]) => `<div><span>${esc((games.find(g => g.appid == id) || {}).name || id)}</span><span class="num">${fmtH(m)} h</span></div>`).join("");
+    tip.innerHTML = `<b>${fmtD(d30[i], {weekday: "short", day: "numeric", month: "short"})}: ${fmtH(vals[i])} h</b>${rows || "<div>Nothing played</div>"}`;
+    const b = $("#sChart").getBoundingClientRect(); tip.style.display = "block";
+    tip.style.left = Math.min(e.clientX - b.left + 14, b.width - 220) + "px"; tip.style.top = (e.clientY - b.top - 20) + "px";
+  });
+  $("#sChart svg").addEventListener("mouseleave", () => tip.style.display = "none");
+})();
+$("#sFigs").innerHTML = [
+  [`${fmtH(m30)} h`, "last 30 days", `${fmtH(mPrev)} h the 30 before`],
+  [`${fmtH(sum(games.map(g => g.minutes)))} h`, "in total", `across ${games.length} games`],
+  [`${never.length}`, "never played", `${Math.round(never.length / games.length * 100)}% of the library`],
+  [`${diskGB} GB`, "installed", `${inst.length} games on disk`],
+].map(([v, l, d]) => `<div class="fig"><div class="v num">${v}</div><div class="l">${l}</div><div class="d">${d}</div></div>`).join("");
+$("#sWish").innerHTML = upcoming.slice(0, 4).map(w => { const n = daysTo(w);
+  return `<div class="wi"><div class="art" data-name="${esc(w.name)}">${img(w.appid, "header.jpg", "capsule_616x353.jpg")}</div><div class="nm">${esc(w.name)}</div>
+    <div class="mt">${n == null ? "To be announced" : `<span class="soon">in ${n} day${n === 1 ? "" : "s"}</span>, ${esc(w.release)}`}</div></div>`; }).join("");
+const cols = [...new Set(games.flatMap(g => g.collections || []))];
+const CHIPS = [["All", () => true], ["Installed", g => g.installed], ["Never played", g => !g.minutes], ...cols.map(c => [c, g => (g.collections || []).includes(c)])];
+let chip = 0;
+function shelfLib() {
+  const list = games.filter(CHIPS[chip][1]).sort((a, b) => b.minutes - a.minutes);
+  $("#sChips").innerHTML = CHIPS.map(([n], i) => `<button aria-pressed="${i === chip}" data-i="${i}">${esc(n)}</button>`).join("");
+  $("#sCount").textContent = `${list.length} of ${games.length} games`;
+  $("#sLib").innerHTML = list.map(g => coverCard(g, g.minutes ? `<b class="num">${fmtH(g.minutes)} h</b>` : "Not played yet")).join("");
+}
+$("#sChips").onclick = e => { if (e.target.dataset.i) { chip = +e.target.dataset.i; shelfLib(); } };
+shelfLib();
+
+// ---------- Tiles ----------
+$("#bHero").style.backgroundImage = `url(${art(lead.appid, "library_hero.jpg")}), url(${art(lead.appid, "header.jpg")})`;
+$("#bHeroName").textContent = lead.name;
+$("#bHeroStats").innerHTML = `<div><b class="num">${fmtH(lead.m30)} h</b><span>last 30 days</span></div>
+  <div><b class="num">${d30.filter(d => day(d)[lead.appid]).length}</b><span>days played</span></div><div><b class="num">${fmtH(lead.minutes)} h</b><span>in total</span></div>`;
+$("#bM30").textContent = `${fmtH(m30)} h`;
+$("#bM30d").innerHTML = `<b>${diff >= 0 ? "+" : "-"}${fmtH(Math.abs(diff))} h</b> on the 30 days before`;
+(function streak() {
+  const rec = range(D.since, D.date);
+  let best = 0, run = 0, cur = 0;
+  rec.forEach(d => { run = total(d) ? run + 1 : 0; best = Math.max(best, run); });
+  for (let i = rec.length - 1; i >= 0 && total(rec[i]); i--) cur++;
+  $("#bStreak").textContent = `${cur} ${cur === 1 ? "day" : "days"}`;
+  $("#bDots").innerHTML = range(back(13), D.date).map(d => `<i class="${total(d) ? "on" : ""}" title="${fmtD(d, {day: "numeric", month: "short"})}: ${total(d) ? fmtH(total(d)) + " h" : "not played"}"></i>`).join("");
+  $("#bStreakd").innerHTML = `Longest so far: <b>${best} days</b>`;
+})();
+(function weeks() {
+  const W = 520, H = 110, B = 18, T = 14, n = 8, list = [];
+  for (let w = n - 1; w >= 0; w--) {
+    const ds = range(back(w * 7 + 6), back(w * 7)).filter(d => d >= D.since);
+    list.push({label: fmtD(back(w * 7 + 6), {day: "numeric", month: "short"}), v: sum(ds.map(total)), rec: ds.length});
+  }
+  const max = Math.max(...list.map(x => x.v), 1), gw = W / n, bw = gw * .58;
+  $("#bWeeks").setAttribute("viewBox", `0 0 ${W} ${H}`);
+  $("#bWeeks").innerHTML = list.map((x, i) => {
+    const h = x.v / max * (H - B - T), X = i * gw + (gw - bw) / 2, r = Math.min(4, h);
+    const bar = x.rec ? (h ? `<path fill="var(--accent)" d="M${X},${H - B} V${H - B - h + r} q0,-${r} ${r},-${r} H${X + bw - r} q${r},0 ${r},${r} V${H - B} Z"><title>Week of ${x.label}: ${fmtH(x.v)} h</title></path>` : "")
+      : `<rect x="${X}" y="${T}" width="${bw}" height="${H - B - T}" rx="4" fill="var(--raise)"><title>Week of ${x.label}: not recorded yet</title></rect>`;
+    return bar + (x.rec && x.v ? `<text class="val" x="${X + bw / 2}" y="${H - B - h - 4}" text-anchor="middle">${fmtH(x.v)}</text>` : "")
+      + `<text class="tick" x="${X + bw / 2}" y="${H - 3}" text-anchor="middle">${x.label}</text>`;
+  }).join("");
+})();
+(function next() {
+  const w = upcoming.find(x => x.releaseISO), n = daysTo(w);
+  $("#bNextDays").textContent = n <= 0 ? "Out now" : `${n} ${n === 1 ? "day" : "days"}`;
+  $("#bNextName").innerHTML = `<b>${esc(w.name)}</b><br>${esc(w.release)}`;
+  const probe = new Image();  // plain tile until (unless) the game's art loads
+  probe.onload = () => { $("#bNext").classList.remove("plain"); $("#bNext").style.backgroundImage = `url(${probe.src})`; };
+  probe.src = art(w.appid, "header.jpg");
+})();
+$("#bNever").textContent = never.length;
+$("#bStack").innerHTML = never.slice(0, 5).map(g => `<img alt="${esc(g.name)}" title="${esc(g.name)}" src="${art(g.appid, "library_600x900.jpg")}" onerror="this.onerror=null;this.src='${art(g.appid, "header.jpg")}'">`).join("");
+$("#bDisk").textContent = `${diskGB} GB`;
+$("#bDiskd").innerHTML = `${inst.length} games. Biggest: <b>${esc(inst[0].name)}</b>, ${Math.round(inst[0].bytes / 1e9)}&nbsp;GB`;
+(function colsTile() {
+  const by = {};
+  games.forEach(g => (g.collections || []).forEach(c => by[c] = (by[c] || 0) + g.minutes));
+  const list = Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 4), max = list[0][1];
+  $("#bCols").innerHTML = list.map(([c, m]) => `<div class="r"><span>${esc(c)}</span><span class="num">${fmtH(m)} h</span><s style="width:${m / max * 100}%"></s></div>`).join("");
+})();
+function tilesLib() {
+  const q = $("#bQ").value.toLowerCase();
+  const list = games.filter(g => !q || g.name.toLowerCase().includes(q)).sort((a, b) => b.minutes - a.minutes);
+  $("#bCount").textContent = `${list.length} games`;
+  $("#bLib").innerHTML = list.map(g => `<div class="gr"><img loading="lazy" alt="" src="${art(g.appid, "capsule_231x87.jpg")}" onerror="this.style.visibility='hidden'">
+    <span class="n">${esc(g.name)}<small>${g.lastPlayed ? "Last played " + new Date(g.lastPlayed * 1000).toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"}) : "Never played"}</small></span>
+    <span class="hh num">${g.minutes ? fmtH(g.minutes) + " h" : ""}</span></div>`).join("");
+}
+$("#bQ").oninput = tilesLib;
+tilesLib();
+</script>
+</body>
+</html>

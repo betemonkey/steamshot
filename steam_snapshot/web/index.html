@@ -7,61 +7,65 @@
 <style>
 :root {
   color-scheme: light;
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --surface-2: #f1f0ec;
-  --ink: #0b0b0b;
-  --ink-2: #52514e;
-  --muted: #898781;
-  --grid: #e1e0d9;
+  --page: #f2f2f0;
+  --surface: #ffffff;
+  --surface-2: #e9e9e5;
+  --ink: #151514;
+  --ink-2: #56554f;
+  --muted: #8a8983;
+  --grid: #e3e2dc;
   --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, .10);
+  --border: rgba(21, 21, 20, .10);
   --accent: #2a78d6;
-  --accent-wash: rgba(42, 120, 214, .12);
+  --accent-wash: #e1ecfa;
+  --on-accent: #ffffff;
   --good: #006300;
-  --radius: 12px;
+  --radius: 14px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-2: #242422;
-    --ink: #ffffff;
-    --ink-2: #c3c2b7;
-    --muted: #898781;
-    --grid: #2c2c2a;
+    --page: #0e0e0f;
+    --surface: #19191a;
+    --surface-2: #242425;
+    --ink: #f1f1ef;
+    --ink-2: #b7b6b0;
+    --muted: #85847f;
+    --grid: #2a2a2c;
     --axis: #383835;
-    --border: rgba(255, 255, 255, .10);
+    --border: rgba(255, 255, 255, .09);
     --accent: #3987e5;
-    --accent-wash: rgba(57, 135, 229, .16);
+    --accent-wash: #17263a;
+    --on-accent: #08121f;
     --good: #0ca30c;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #242422;
-  --ink: #ffffff;
-  --ink-2: #c3c2b7;
-  --muted: #898781;
-  --grid: #2c2c2a;
+  --page: #0e0e0f;
+  --surface: #19191a;
+  --surface-2: #242425;
+  --ink: #f1f1ef;
+  --ink-2: #b7b6b0;
+  --muted: #85847f;
+  --grid: #2a2a2c;
   --axis: #383835;
-  --border: rgba(255, 255, 255, .10);
+  --border: rgba(255, 255, 255, .09);
   --accent: #3987e5;
-  --accent-wash: rgba(57, 135, 229, .16);
+  --accent-wash: #17263a;
+  --on-accent: #08121f;
   --good: #0ca30c;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0; background: var(--page); color: var(--ink);
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
-header { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-bottom: 18px; }
-header h1 { font-size: 20px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
-.who { color: var(--ink-2); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
+header { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; min-height: 64px; padding: 10px 0; }
+header h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: -.01em; }
+.who { color: var(--ink-2); white-space: nowrap; }
 .chip {
   display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
   background: var(--accent-wash); color: var(--ink); white-space: nowrap;
@@ -74,31 +78,39 @@ select, input[type=search], button {
 }
 button { cursor: pointer; }
 button:hover, select:hover { background: var(--surface-2); }
+button:active { transform: translateY(1px); }
 button[aria-pressed=true] { background: var(--accent-wash); border-color: transparent; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.empty { color: var(--ink-2); padding: 8px 0; }
+.more { margin-top: 12px; }
+a.plain { color: inherit; text-decoration: none; }
+a.plain:hover { text-decoration: underline; }
 
-.tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
-.tile, .card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-}
-.tile { padding: 14px 16px; min-width: 0; }
-.tile .label { color: var(--ink-2); font-size: 13px; }
-.tile .value { font-size: 26px; font-weight: 650; margin-top: 2px; letter-spacing: -.01em; }
-.tile .delta { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
-.tile .delta.up { color: var(--good); }
+/* the Shelf / Tiles switch */
+.switch { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--surface-2); }
+.switch button { border: 0; background: none; border-radius: 999px; padding: 4px 14px; color: var(--ink-2); font-weight: 600; }
+.switch button:hover { background: none; color: var(--ink); }
+.switch button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+main.fade { animation: fade .25s cubic-bezier(.16, 1, .3, 1); }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-.grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 12px; margin-bottom: 12px; }
-.grid.even { grid-template-columns: 1fr 1fr; }
-.card { padding: 16px; min-width: 0; }
-.card h2 { font-size: 15px; margin: 0; font-weight: 650; }
-.card .sub { color: var(--ink-2); font-size: 12.5px; margin-top: 2px; }
-.card-head { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 12px; }
-.card-head .spacer { flex: 1; }
+/* shared pieces */
+section { margin-top: 34px; }
+.h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.h h2 { margin: 0; font-size: 18px; letter-spacing: -.01em; }
+.h .sub, .sub { color: var(--ink-2); }
+.h .tools { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .seg { display: inline-flex; gap: 4px; }
-.seg button { padding: 3px 9px; font-size: 12.5px; white-space: nowrap; }
+.seg button { padding: 3px 10px; font-size: 12.5px; white-space: nowrap; border-radius: 999px; }
+.panel { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; min-width: 0; }
+.noart { display: grid; place-items: center; padding: 10px; text-align: center; color: var(--ink-2); font-weight: 600; font-size: 13px; }
+.noart::after { content: attr(data-name); }
+.tag { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); margin-left: 6px; white-space: nowrap; }
 
 #chart { position: relative; }
-#chart svg { display: block; width: 100%; height: 220px; overflow: visible; }
+#chart svg { display: block; width: 100%; height: 240px; overflow: visible; }
 .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .tip {
   position: absolute; pointer-events: none; z-index: 5; min-width: 150px; max-width: 240px;
@@ -116,33 +128,120 @@ details.table-view table { margin-top: 6px; }
 .list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; min-width: 0; }
 .list li + li { border-top: 1px solid var(--border); }
 .list .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.list .num { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.thumb {
-  width: 62px; height: 23px; border-radius: 4px; object-fit: cover; flex: none;
-  background: var(--surface-2);
-}
-.thumb.lg { width: 92px; height: 34px; }
-.empty { color: var(--ink-2); padding: 8px 0; }
-
-.bars .bar-row { display: grid; grid-template-columns: minmax(90px, 34%) 1fr auto; gap: 10px; align-items: center; padding: 4px 0; }
-.bars .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bars .bar-track { height: 14px; position: relative; }
-.bars .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
-.bars .bar-val { color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
-
-.changes h3 { font-size: 12.5px; color: var(--ink-2); font-weight: 600; margin: 12px 0 2px; text-transform: none; }
+.list .num { color: var(--ink-2); white-space: nowrap; }
+.thumb { width: 62px; height: 23px; border-radius: 4px; object-fit: cover; flex: none; background: var(--surface-2); }
+.changes h3 { font-size: 12.5px; color: var(--ink-2); font-weight: 600; margin: 12px 0 2px; }
 .changes h3:first-child { margin-top: 0; }
 .plus { color: var(--good); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.wish { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
-.wish .w { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; background: var(--surface-2); min-width: 0; }
-.wish .w .t { min-width: 0; }
-.wish .w .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wish .w .d { color: var(--ink-2); font-size: 12.5px; }
+.bars .bar-row { display: grid; grid-template-columns: minmax(90px, 34%) 1fr auto; gap: 10px; align-items: center; padding: 4px 0; }
+.bars .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars .bar-track { height: 10px; position: relative; }
+.bars .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+.bars .bar-val { color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
 
-.lib-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
-.lib-tools input[type=search] { flex: 1 1 200px; min-width: 0; }
+/* ===== Shelf view ===== */
+.s-hero { position: relative; border-radius: var(--radius); overflow: hidden; min-height: 300px; background: #111 center/cover no-repeat;
+  display: grid; grid-template-columns: 1.2fr 1fr; align-items: end; color: #fff; }
+.s-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,12,.88) 0%, rgba(10,10,12,.55) 45%, rgba(10,10,12,.05) 100%); }
+.s-hero > * { position: relative; }
+.s-hero .copy { padding: 28px 30px; }
+.s-hero .lbl { color: rgba(255,255,255,.78); font-size: 13px; }
+.s-hero h2 { margin: 4px 0 6px; font-size: clamp(28px, 4vw, 44px); line-height: 1.05; letter-spacing: -.02em; }
+.s-hero .facts { color: rgba(255,255,255,.88); font-size: 15px; }
+.s-hero .facts b { color: #fff; }
+.s-hero .spark { padding: 24px 30px; }
+.s-hero .spark svg { width: 100%; height: 70px; display: block; }
+.s-hero .spark .cap { font-size: 12px; color: rgba(255,255,255,.72); margin-top: 4px; }
+.s-hero.plain { background: var(--accent-wash); color: var(--ink); min-height: 220px; }
+.s-hero.plain::before { display: none; }
+.s-hero.plain .lbl, .s-hero.plain .facts, .s-hero.plain .spark .cap { color: var(--ink-2); }
+.s-hero.plain .facts b { color: var(--ink); }
+.s-hero.plain .spark rect { fill: var(--accent); }
+
+.shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 14px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
+.cv { scroll-snap-align: start; min-width: 0; }
+.cv .art { display: block; aspect-ratio: 2 / 3; border-radius: 10px; background: var(--surface-2); overflow: hidden; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
+.cv:hover .art { transform: translateY(-3px); }
+.cv .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cv .art, .wi .art { text-decoration: none; }
+.cv .art.noart, .wi .art.noart { display: grid; }
+.cv .nm { margin-top: 8px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv .mt { color: var(--ink-2); font-size: 13px; }
+.cv .mt b { color: var(--ink); }
+.s-split { display: grid; grid-template-columns: 2.2fr 1fr; gap: 28px; align-items: start; }
+.figs { display: grid; gap: 16px; padding-top: 6px; }
+.fig .v { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.fig .l { color: var(--ink-2); }
+.fig .d { color: var(--muted); font-size: 12.5px; }
+.fig .d.up { color: var(--good); }
+.s-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.wish { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.wi { min-width: 0; }
+.wi .art { display: block; aspect-ratio: 460 / 215; border-radius: 10px; background: var(--surface-2); overflow: hidden; }
+.wi .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wi .nm { margin-top: 8px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wi .mt { color: var(--ink-2); font-size: 13px; }
+.soon { color: var(--accent); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.chips button { border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+.covergrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 18px 14px; }
+.lib-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.lib-tools input[type=search] { flex: 1 1 220px; min-width: 0; border-radius: 999px; padding: 6px 14px; }
 .lib-tools label { color: var(--ink-2); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+
+/* ===== Tiles view ===== */
+.bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: minmax(170px, auto); gap: 14px;
+  grid-template-areas: "hero hero m30 streak" "hero hero weeks weeks" "next backlog disk cols" "changes changes chart chart"; }
+.tile { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; position: relative; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.tile .q { color: var(--ink-2); font-size: 13px; }
+.tile .big { font-size: 40px; font-weight: 750; letter-spacing: -.03em; line-height: 1.05; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.tile .foot { margin-top: auto; padding-top: 10px; color: var(--ink-2); font-size: 13px; }
+.tile .foot b { color: var(--ink); }
+.t-hero { grid-area: hero; color: #fff; background: #111 center/cover; justify-content: flex-end; padding: 26px; }
+.t-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(8,8,8,.9) 0%, rgba(8,8,8,.35) 55%, rgba(8,8,8,0) 100%); }
+.t-hero > * { position: relative; }
+.t-hero .q { color: rgba(255,255,255,.78); }
+.t-hero h2 { margin: 4px 0 8px; font-size: clamp(30px, 3.6vw, 46px); line-height: 1.05; letter-spacing: -.02em; }
+.t-hero .stats { display: flex; gap: 28px; flex-wrap: wrap; }
+.t-hero .stats b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+.t-hero .stats span { color: rgba(255,255,255,.78); font-size: 13px; }
+.t-hero.plain { background: var(--accent-wash); color: var(--ink); }
+.t-hero.plain::before { display: none; }
+.t-hero.plain .q, .t-hero.plain .stats span { color: var(--ink-2); }
+.t-m30 { grid-area: m30; background: var(--accent); color: var(--on-accent); }
+.t-m30 .q, .t-m30 .foot, .t-m30 .foot b { color: var(--on-accent); opacity: .92; }
+.t-streak { grid-area: streak; }
+.dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin-top: 14px; }
+.dots i { aspect-ratio: 1; border-radius: 50%; background: var(--surface-2); }
+.dots i.on { background: var(--accent); }
+.dots i.nr { background: none; outline: 1px dashed var(--border); outline-offset: -1px; }
+.t-weeks { grid-area: weeks; }
+.t-weeks svg { width: 100%; height: 110px; display: block; margin-top: 8px; overflow: visible; }
+.t-weeks .val { fill: var(--ink-2); font-size: 11px; }
+.t-next { grid-area: next; color: #fff; background: #222 center/cover; }
+.t-next::before { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(8,8,8,.88), rgba(8,8,8,.25)); }
+.t-next > * { position: relative; }
+.t-next .q, .t-next .foot, .t-next .foot b { color: rgba(255,255,255,.88); }
+.t-next.plain { color: var(--ink); background: var(--accent-wash); }
+.t-next.plain::before { display: none; }
+.t-next.plain .q, .t-next.plain .foot { color: var(--ink-2); }
+.t-next.plain .foot b { color: var(--ink); }
+.t-backlog { grid-area: backlog; }
+.stack { display: flex; margin-top: auto; padding-top: 10px; }
+.stack img { width: 64px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 6px; border: 2px solid var(--surface); background: var(--surface-2); }
+.stack img + img { margin-left: -16px; }
+.t-disk { grid-area: disk; }
+.t-cols { grid-area: cols; }
+.t-cols .r { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-top: 8px; font-size: 13px; }
+.t-cols .r span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-cols .r s { grid-column: 1 / -1; text-decoration: none; height: 5px; border-radius: 0 3px 3px 0; background: var(--accent); display: block; min-width: 2px; }
+.t-cols .r span:last-of-type { color: var(--ink-2); }
+.t-changes { grid-area: changes; }
+.t-chart { grid-area: chart; }
+.tile .th { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.tile .th .q { flex: 1; }
+
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 th { font-size: 12.5px; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
@@ -150,15 +249,13 @@ th[data-sort] { cursor: pointer; user-select: none; }
 th[data-sort]:hover { color: var(--ink); }
 th .arrow { display: inline-block; width: 1em; color: var(--accent); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-td.game { display: flex; gap: 10px; align-items: center; min-width: 0; }
+td.game .gc { display: flex; gap: 10px; align-items: center; min-width: 0; }
 td.game a { color: inherit; text-decoration: none; }
 td.game a:hover { text-decoration: underline; }
-.tag { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); margin-left: 6px; white-space: nowrap; }
-.muted { color: var(--ink-2); }
-.more { margin-top: 10px; }
-footer { color: var(--ink-2); font-size: 12.5px; margin-top: 18px; }
+
+footer { color: var(--ink-2); font-size: 12.5px; margin-top: 28px; }
 .notice {
-  display: flex; gap: 10px; align-items: center; margin-bottom: 12px; padding: 10px 14px;
+  display: flex; gap: 10px; align-items: center; margin-bottom: 14px; padding: 10px 14px;
   background: var(--accent-wash); border-radius: var(--radius); color: var(--ink);
 }
 .notice .spacer { flex: 1; }
@@ -167,15 +264,23 @@ footer { color: var(--ink-2); font-size: 12.5px; margin-top: 18px; }
 footer code, .empty code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 
 @media (max-width: 900px) {
-  .tiles { grid-template-columns: repeat(2, 1fr); }
-  .tiles .tile:last-child { grid-column: span 2; }
-  .grid, .grid.even { grid-template-columns: 1fr; }
+  .s-hero { grid-template-columns: 1fr; }
+  .s-hero .spark { display: none; }
+  .s-split, .s-pair { grid-template-columns: 1fr; }
+  .figs { grid-template-columns: repeat(2, 1fr); }
+  .wish { grid-template-columns: repeat(2, 1fr); }
+  .bento { grid-template-columns: 1fr 1fr; grid-template-areas: "hero hero" "hero hero" "m30 streak" "weeks weeks" "next backlog" "disk cols" "changes changes" "chart chart"; }
 }
 @media (max-width: 560px) {
+  .who { display: none; }
   .col-col, .col-size, td.game .thumb { display: none; }
   th, td { padding: 7px 5px; }
-  .tile .value { font-size: 22px; }
+  .tile .big { font-size: 32px; }
   .thumb { width: 46px; height: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  main.fade { animation: none; }
+  .cv .art { transition: none; }
 }
 </style>
 </head>
@@ -187,6 +292,10 @@ footer code, .empty code { background: var(--surface-2); padding: 1px 5px; borde
     <span class="spacer"></span>
     <div class="controls">
       <select id="account" aria-label="Account" hidden></select>
+      <div class="switch" role="group" aria-label="Layout">
+        <button data-view="shelf">Shelf</button>
+        <button data-view="tiles">Tiles</button>
+      </div>
       <label for="day">Snapshot</label>
       <select id="day"></select>
       <span id="taken"></span>
@@ -212,9 +321,11 @@ const toUTC = iso => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice
 const isoOf = t => new Date(t).toISOString().slice(0, 10);
 const fmtDay = (iso, opts = {day: "numeric", month: "short"}) => new Date(toUTC(iso)).toLocaleDateString(undefined, {timeZone: "UTC", ...opts});
 const daysBetween = (a, b) => Math.round((toUTC(b) - toUTC(a)) / DAY);
+const sum = a => a.reduce((x, y) => x + y, 0);
 
 const state = {accounts: [], options: {images: true}, account: null, snaps: [], snap: null, hist: null,
-               range: 30, sort: {key: "minutes", dir: -1}, q: "", col: "", installed: false, hidden: false, limit: 50};
+               view: "shelf", range: 30, sort: {key: "minutes", dir: -1}, q: "", col: "", chip: "", installed: false,
+               hidden: false, limit: 50};
 
 function store(k, v) { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -225,15 +336,29 @@ async function api(path) {
   return r.json();
 }
 
+// ---------- art ----------
+const ART = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/";
+const OLD_ART = "https://cdn.cloudflare.steamstatic.com/steam/apps/";
+const artUrl = (appid, file) => ART + appid + "/" + file;
 function img(appid, cls = "thumb") {
   if (!state.options.images) return "";
-  const a = `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/capsule_231x87.jpg`;
-  const b = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/capsule_231x87.jpg`;
+  const a = `${OLD_ART}${appid}/capsule_231x87.jpg`;
+  const b = artUrl(appid, "capsule_231x87.jpg");
   return `<img class="${cls}" loading="lazy" alt="" src="${a}" data-alt="${b}" onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=''}else{this.style.visibility='hidden'}">`;
 }
+// cover art for a box that carries data-name: the first file, then the second,
+// then the game's name on a plain tile (also what you get with images off)
+function art(appid, first, second) {
+  if (!state.options.images) return "";
+  return `<img loading="lazy" alt="" src="${artUrl(appid, first)}" data-alt="${artUrl(appid, second)}" onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=''}else{this.parentNode.classList.add('noart');this.remove()}">`;
+}
+const artBox = (appid, name, first, second, extra = "") =>
+  `<a class="art${state.options.images ? "" : " noart"}" data-name="${esc(name)}" href="${storeUrl(appid)}" target="_blank" rel="noopener"${extra}>${art(appid, first, second)}</a>`;
+// a hero background: the wide library art, with the store header under it as a fallback
+const heroBg = appid => `url(${artUrl(appid, "library_hero.jpg")}), url(${artUrl(appid, "header.jpg")})`;
 const storeUrl = appid => `https://store.steampowered.com/app/${appid}/`;
 
-// ---------- theme ----------
+// ---------- theme and layout ----------
 (function theme() {
   const t = stored("ssTheme");
   if (t) document.documentElement.dataset.theme = t;
@@ -245,6 +370,23 @@ const storeUrl = appid => `https://store.steampowered.com/app/${appid}/`;
     store("ssTheme", next);
   };
 })();
+(function layout() {
+  const want = new URLSearchParams(location.search).get("view") || stored("ssView");
+  state.view = want === "tiles" ? "tiles" : "shelf";
+  const mark = () => document.querySelectorAll(".switch button").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === state.view));
+  document.querySelectorAll(".switch button").forEach(b => b.onclick = () => {
+    if (state.view === b.dataset.view) return;
+    state.view = b.dataset.view;
+    store("ssView", state.view);
+    mark();
+    if (state.snap) {
+      render();
+      const m = $("#main");
+      m.classList.remove("fade"); void m.offsetWidth; m.classList.add("fade");
+    }
+  });
+  mark();
+})();
 
 // ---------- loading ----------
 async function boot() {
@@ -255,7 +397,7 @@ async function boot() {
   $("#foot").innerHTML = `steam-snapshot ${esc(res.version)} · data stays on this machine`;
   watchVersion(res.version);
   if (!state.accounts.length) {
-    $("#main").innerHTML = `<div class="card"><h2>No snapshots yet</h2><p class="empty">Take the first one with
+    $("#main").innerHTML = `<div class="panel"><h2 style="margin:0 0 4px;font-size:18px">No snapshots yet</h2><p class="empty">Take the first one with
       <code>python -m steam_snapshot snapshot</code>, then reload. To look around first, run
       <code>python -m steam_snapshot demo</code>.</p></div>`;
     return;
@@ -303,6 +445,73 @@ function histWindow(endIso, days) {
   }
   return out;
 }
+// everything both layouts show, worked out once per render
+function facts() {
+  const snap = state.snap;
+  const games = visibleGames(snap);
+  const names = Object.fromEntries((snap.games || []).map(g => [g.appid, g.name]));
+  const byId = Object.fromEntries(games.map(g => [g.appid, g]));
+  const prevGames = snap.previous ? snap.previous.games.filter(g => state.hidden || !g.hidden) : null;
+  const last30 = histWindow(snap.date, 30);
+  const prev30 = histWindow(isoOf(toUTC(snap.date) - 30 * DAY), 30);
+  const per30 = {};
+  last30.forEach(d => Object.entries(d.apps).forEach(([a, m]) => per30[a] = (per30[a] || 0) + m));
+  const recent = Object.entries(per30).filter(([a]) => byId[a]).sort((a, b) => b[1] - a[1]).map(([a, m]) => ({...byId[a], m30: m}));
+  // the game to lead with: most hours this month, else the one played last
+  let lead = recent[0], leadWhy = "Most played this month";
+  if (!lead) {
+    lead = [...games].filter(g => g.lastPlayed).sort((a, b) => b.lastPlayed - a.lastPlayed)[0];
+    leadWhy = "Last played";
+    if (lead) lead = {...lead, m30: 0};
+  }
+  const inst = games.filter(g => g.installed).sort((a, b) => (b.bytes || 0) - (a.bytes || 0));
+  return {
+    snap, games, names, prevGames, last30, recent, lead, leadWhy, inst,
+    totalMin: sum(games.map(g => g.minutes || 0)),
+    prevMin: prevGames ? sum(prevGames.map(g => g.minutes || 0)) : null,
+    m30: sum(last30.map(d => d.mins)),
+    p30: sum(prev30.map(d => d.mins)),
+    p30tracked: prev30.every(d => d.tracked),
+    never: games.filter(g => !g.minutes),
+    diskBytes: sum(inst.map(g => g.bytes || 0)),
+  };
+}
+function deltaTotal(f) {
+  if (f.prevMin === null) return "";
+  const d = f.totalMin - f.prevMin;
+  return d > 0 ? `+${fmtH(d)} h since ${fmtDay(f.snap.previous.date)}` : `no change since ${fmtDay(f.snap.previous.date)}`;
+}
+function delta30(f) {
+  if (state.hist.since && state.hist.since > f.last30[0].iso) return `recording since ${fmtDay(state.hist.since)}`;
+  return f.p30tracked ? `${fmtH(f.p30)} h the 30 days before` : "";
+}
+function streaks(endIso) {
+  const since = state.hist.since;
+  if (!since || since > endIso) return {cur: 0, best: 0};
+  let best = 0, run = 0, cur = 0;
+  const days = histWindow(endIso, daysBetween(since, endIso) + 1);
+  days.forEach(d => { run = d.mins ? run + 1 : 0; best = Math.max(best, run); });
+  for (let i = days.length - 1; i >= 0 && days[i].mins; i--) cur++;
+  return {cur, best};
+}
+function collectionTotals(games) {
+  const by = {};
+  games.forEach(g => {
+    const cols = g.collections && g.collections.length ? g.collections : [g.type === "demo" ? "Demos" : "Not in a collection"];
+    cols.forEach(c => { by[c] = by[c] || {mins: 0, n: 0}; by[c].mins += g.minutes || 0; by[c].n++; });
+  });
+  return Object.entries(by).sort((a, b) => b[1].mins - a[1].mins);
+}
+function upcoming(snap) {
+  return (snap.wishlist || []).filter(w => w.comingSoon).sort((a, b) =>
+    (a.releaseISO || "9999") < (b.releaseISO || "9999") ? -1 : (a.releaseISO || "9999") > (b.releaseISO || "9999") ? 1 : a.name.localeCompare(b.name));
+}
+function whenOut(w, today) {
+  if (!w.comingSoon) return esc(w.release || "");
+  if (!w.releaseISO) return esc(w.release || "To be announced");
+  const n = daysBetween(today, w.releaseISO);
+  return `<span class="soon">${n <= 0 ? "out now" : n === 1 ? "tomorrow" : "in " + n + " days"}</span>, ${esc(fmtDay(w.releaseISO, {day: "numeric", month: "short", year: "numeric"}))}`;
+}
 
 // ---------- render ----------
 function render() {
@@ -312,62 +521,14 @@ function render() {
   const t = new Date(snap.taken);
   $("#taken").textContent = isNaN(t) ? "" : "taken " + t.toLocaleTimeString(undefined, {hour: "2-digit", minute: "2-digit"});
 
-  const games = visibleGames(snap);
-  const names = Object.fromEntries((snap.games || []).map(g => [g.appid, g.name]));
-  const totalMin = games.reduce((a, g) => a + (g.minutes || 0), 0);
-  const prevGames = snap.previous ? snap.previous.games.filter(g => state.hidden || !g.hidden) : null;
-  const prevMin = prevGames ? prevGames.reduce((a, g) => a + (g.minutes || 0), 0) : null;
-  const inst = games.filter(g => g.installed);
-  const last30 = histWindow(snap.date, 30);
-  const prev30 = histWindow(isoOf(toUTC(snap.date) - 30 * DAY), 30);
-  const m30 = last30.reduce((a, d) => a + d.mins, 0);
-  const p30 = prev30.reduce((a, d) => a + d.mins, 0);
-  const p30tracked = prev30.every(d => d.tracked);
-  const never = games.filter(g => !g.minutes).length;
-
-  const tile = (label, value, delta = "", up = false) =>
-    `<div class="tile"><div class="label">${label}</div><div class="value">${value}</div>${delta ? `<div class="delta${up ? " up" : ""}">${delta}</div>` : ""}</div>`;
-  let deltaTotal = "";
-  if (prevMin !== null) {
-    const d = totalMin - prevMin;
-    deltaTotal = d > 0 ? `+${fmtH(d)} h since ${fmtDay(snap.previous.date)}` : `no change since ${fmtDay(snap.previous.date)}`;
-  }
-  let delta30 = state.hist.since && state.hist.since > last30[0].iso ? `recording since ${fmtDay(state.hist.since)}` : "";
-  if (!delta30 && p30tracked) delta30 = `${fmtH(p30)} h the 30 days before`;
-
-  const html = [];
-  html.push(`<section class="tiles">
-    ${tile("Games", games.length.toLocaleString(), prevGames ? signed(games.length - prevGames.length, "since " + fmtDay(snap.previous.date)) : "")}
-    ${tile("Total playtime", fmtH(totalMin) + " h", deltaTotal, prevMin !== null && totalMin > prevMin)}
-    ${tile("Last 30 days", fmtH(m30) + " h", delta30)}
-    ${tile("Installed", inst.length.toLocaleString(), fmtBytes(inst.reduce((a, g) => a + (g.bytes || 0), 0)) + " on disk")}
-    ${tile("Never played", never.toLocaleString(), games.length ? Math.round(never / games.length * 100) + "% of the library" : "")}
-  </section>`);
-
-  html.push(`<section class="grid">
-    <div class="card">
-      <div class="card-head"><div><h2>Playtime per day</h2><div class="sub" id="chart-sub"></div></div><span class="spacer"></span>
-        <div class="seg" role="group" aria-label="Range">${[30, 90].map(r => `<button data-range="${r}" aria-pressed="${state.range === r}">${r} days</button>`).join("")}</div></div>
-      <div id="chart"></div>
-      <details class="table-view"><summary>Show as a table</summary><div id="chart-table"></div></details>
-    </div>
-    <div class="card"><div class="card-head"><div><h2>Played lately</h2><div class="sub">last 30 days, most hours first</div></div></div>${lately(last30, names)}</div>
-  </section>`);
-
-  html.push(`<section class="grid even">
-    <div class="card changes"><div class="card-head"><div><h2>Changes</h2><div class="sub">${snap.previous ? "compared with the snapshot of " + fmtDay(snap.previous.date, {weekday: "short", day: "numeric", month: "short"}) : "the first snapshot - changes show from the next one"}</div></div></div>${changes(games, prevGames)}</div>
-    <div class="card"><div class="card-head"><div><h2>Collections</h2><div class="sub">hours per Steam collection</div></div></div>${collections(games)}</div>
-  </section>`);
-
-  if (snap.wishlistStatus && snap.wishlistStatus !== "off") html.push(wishlist(snap));
-  html.push(library(games));
-  $("#main").innerHTML = html.join("");
-
+  const f = facts();
+  $("#main").innerHTML = state.view === "tiles" ? tilesView(f) : shelfView(f);
   document.querySelectorAll("[data-range]").forEach(b => b.onclick = () => { state.range = +b.dataset.range; render(); });
-  drawChart(histWindow(snap.date, state.range), names);
-  wireLibrary();
-  renderRows();
+  drawChart(histWindow(snap.date, state.range), f.names);
+  if (state.view === "tiles") { drawWeeks(); wireTable(); renderRows(); }
+  else { drawSpark(f); wireCovers(); renderCovers(); }
 
+  $("#foot").innerHTML = $("#foot").innerHTML.split("<br>")[0];
   const notes = [];
   const src = snap.sources || {};
   if (src.packageinfo === false) notes.push("licence list unreadable - refunded games are not filtered out");
@@ -376,14 +537,182 @@ function render() {
   if (notes.length) $("#foot").insertAdjacentHTML("beforeend", "<br>" + notes.map(esc).join(" · "));
 }
 
-function signed(n, suffix) { return n > 0 ? `+${n} ${suffix}` : n < 0 ? `${n} ${suffix}` : `no change ${suffix}`; }
+function rangeButtons() {
+  return `<div class="seg" role="group" aria-label="Range">${[30, 90].map(r => `<button data-range="${r}" aria-pressed="${state.range === r}">${r} days</button>`).join("")}</div>`;
+}
+function chartBlock() {
+  return `<div id="chart"></div><details class="table-view"><summary>Show as a table</summary><div id="chart-table"></div></details>`;
+}
+function changesSub(snap) {
+  return snap.previous ? "compared with the snapshot of " + fmtDay(snap.previous.date, {weekday: "short", day: "numeric", month: "short"}) : "the first snapshot - changes show from the next one";
+}
 
-function lately(days, names) {
-  const tot = {};
-  days.forEach(d => Object.entries(d.apps).forEach(([a, m]) => tot[a] = (tot[a] || 0) + m));
-  const top = Object.entries(tot).sort((a, b) => b[1] - a[1]).slice(0, 7);
-  if (!top.length) return `<p class="empty">Nothing recorded in the last 30 days yet. Playtime is tracked between snapshots, so it fills in as the scheduled job runs.</p>`;
-  return `<ul class="list">${top.map(([a, m]) => `<li>${img(a)}<span class="name"><a href="${storeUrl(a)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(names[a] || "App " + a)}</a></span><span class="num">${fmtH(m)} h</span></li>`).join("")}</ul>`;
+// ===== Shelf: cover art first =====
+function shelfView(f) {
+  const out = [];
+  if (f.lead) {
+    const plain = !state.options.images;
+    out.push(`<div class="s-hero${plain ? " plain" : ""}"${plain ? "" : ` style="background-image:${heroBg(f.lead.appid)}"`}>
+      <div class="copy"><div class="lbl">${f.leadWhy}</div><h2><a class="plain" href="${storeUrl(f.lead.appid)}" target="_blank" rel="noopener">${esc(f.lead.name)}</a></h2>
+        <div class="facts">${f.lead.m30 ? `<b class="num">${fmtH(f.lead.m30)} h</b> in the last 30 days, ` : ""}<b class="num">${fmtH(f.lead.minutes || 0)} h</b> in total.${f.lead.lastPlayed ? " Last played " + ago(f.lead.lastPlayed, f.snap.date) + "." : ""}</div></div>
+      <div class="spark"><svg id="spark" preserveAspectRatio="none" aria-label="Hours per day of ${esc(f.lead.name)}, last 30 days"></svg><div class="cap">Hours per day, last 30 days</div></div>
+    </div>`);
+  }
+  out.push(`<section><div class="h"><h2>Played lately</h2><span class="sub">last 30 days, most hours first</span></div>
+    ${f.recent.length ? `<div class="shelf">${f.recent.slice(0, 12).map(g => cover(g, `<b class="num">${fmtH(g.m30)} h</b> this month`)).join("")}</div>`
+      : `<p class="empty">Nothing recorded in the last 30 days yet. Playtime is tracked between snapshots, so it fills in as the scheduled job runs.</p>`}</section>`);
+  const games = f.games.length, nv = f.never.length;
+  const fig = (v, l, d, up) => `<div class="fig"><div class="v num">${v}</div><div class="l">${l}</div>${d ? `<div class="d${up ? " up" : ""}">${d}</div>` : ""}</div>`;
+  out.push(`<section class="s-split">
+    <div><div class="h"><h2>Playtime per day</h2><span class="sub" id="chart-sub"></span><span class="tools">${rangeButtons()}</span></div>${chartBlock()}</div>
+    <div class="figs">
+      ${fig(fmtH(f.m30) + " h", "last 30 days", delta30(f))}
+      ${fig(fmtH(f.totalMin) + " h", "in total", deltaTotal(f), f.prevMin !== null && f.totalMin > f.prevMin)}
+      ${fig(games.toLocaleString(), "games", f.prevGames ? signed(games - f.prevGames.length, "since " + fmtDay(f.snap.previous.date)) : "")}
+      ${fig(nv.toLocaleString(), "never played", games ? Math.round(nv / games * 100) + "% of the library" : "")}
+      ${fig(fmtBytes(f.diskBytes) || "0 GB", "installed", `${f.inst.length} games on disk`)}
+    </div></section>`);
+  out.push(`<section class="s-pair">
+    <div class="panel changes"><div class="h"><h2>Changes</h2><span class="sub">${changesSub(f.snap)}</span></div>${changes(f.games, f.prevGames)}</div>
+    <div class="panel"><div class="h"><h2>Collections</h2><span class="sub">hours per Steam collection</span></div>${collections(f.games)}</div>
+  </section>`);
+  if (f.snap.wishlistStatus && f.snap.wishlistStatus !== "off") out.push(wishlist(f.snap));
+  out.push(`<section><div class="h"><h2>Library</h2><span class="sub" id="lib-count"></span></div>
+    <div class="lib-tools">
+      <input type="search" id="q" placeholder="Search games" value="${esc(state.q)}" aria-label="Search games">
+      <select id="sortby" aria-label="Sort by">${[["minutes", "Most played"], ["lastPlayed", "Last played"], ["name", "Name"], ["bytes", "Size on disk"]]
+        .map(([k, l]) => `<option value="${k}"${state.sort.key === k ? " selected" : ""}>${l}</option>`).join("")}</select>
+      ${hiddenToggle()}
+    </div>
+    <div class="chips" id="chips"></div><div class="covergrid" id="covers"></div><div class="more" id="lib-more"></div></section>`);
+  return out.join("");
+}
+function cover(g, line) {
+  return `<div class="cv">${artBox(g.appid, g.name, "library_600x900.jpg", "header.jpg")}<div class="nm" title="${esc(g.name)}">${esc(g.name)}</div><div class="mt">${line}</div></div>`;
+}
+function ago(t, todayIso) {
+  const d = Math.floor((toUTC(todayIso) + DAY - t * 1000) / DAY);
+  return d <= 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
+}
+function drawSpark(f) {
+  const el = $("#spark");
+  if (!el || !f.lead) return;
+  const vals = f.last30.map(d => d.apps[f.lead.appid] || 0), max = Math.max(...vals, 1), W = 300, H = 70, bw = W / vals.length;
+  el.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  el.innerHTML = vals.map((v, i) => v ? `<rect x="${i * bw + 1}" y="${H - v / max * H}" width="${Math.max(1, bw - 2)}" height="${v / max * H}" rx="2" fill="rgba(255,255,255,.85)"><title>${esc(fmtDay(f.last30[i].iso))}: ${fmtH(v)} h</title></rect>` : "").join("");
+}
+const CHIPS = {
+  "": ["All", () => true],
+  "\u0001inst": ["Installed", g => g.installed],
+  "\u0001never": ["Never played", g => !g.minutes],
+  "\u0000none": ["Not in a collection", g => !(g.collections || []).length],
+};
+function chipFilter(key) {
+  return CHIPS[key] ? CHIPS[key][1] : g => (g.collections || []).includes(key);
+}
+function wireCovers() {
+  $("#q").oninput = e => { state.q = e.target.value; state.limit = 50; renderCovers(); };
+  $("#sortby").onchange = e => { const k = e.target.value; state.sort = {key: k, dir: k === "name" ? 1 : -1}; renderCovers(); };
+  wireHidden();
+  $("#chips").onclick = e => { const b = e.target.closest("button"); if (b) { state.chip = b.dataset.chip; state.limit = 50; renderCovers(); } };
+}
+function renderCovers() {
+  const all = visibleGames(state.snap);
+  const cols = [...new Set(all.flatMap(g => g.collections || []))].sort((a, b) => a.localeCompare(b));
+  const keys = ["", "\u0001inst", "\u0001never", ...cols, ...(all.some(g => !(g.collections || []).length) && cols.length ? ["\u0000none"] : [])];
+  if (!keys.includes(state.chip)) state.chip = "";
+  $("#chips").innerHTML = keys.map(k => `<button data-chip="${esc(k)}" aria-pressed="${k === state.chip}">${esc(CHIPS[k] ? CHIPS[k][0] : k)}</button>`).join("");
+  const rows = sortGames(filterGames(all).filter(chipFilter(state.chip)));
+  $("#lib-count").textContent = `${rows.length} of ${all.length} games`;
+  const shown = rows.slice(0, state.limit);
+  $("#covers").innerHTML = shown.map(g => cover(g, (g.minutes ? `<b class="num">${fmtH(g.minutes)} h</b>` : "Not played yet") + tags(g))).join("")
+    || `<p class="empty">No games match.</p>`;
+  showMore(rows.length, shown.length, renderCovers);
+}
+
+// ===== Tiles: one tile per question =====
+function tilesView(f) {
+  const out = [];
+  const plain = !state.options.images;
+  const lead = f.lead;
+  const leadDays = lead ? f.last30.filter(d => d.apps[lead.appid]).length : 0;
+  out.push(lead ? `<div class="tile t-hero${plain ? " plain" : ""}"${plain ? "" : ` style="background-image:${heroBg(lead.appid)}"`}>
+      <div class="q">${lead.m30 ? "You're mostly playing" : "Last played"}</div><h2><a class="plain" href="${storeUrl(lead.appid)}" target="_blank" rel="noopener">${esc(lead.name)}</a></h2>
+      <div class="stats"><div><b>${fmtH(lead.m30)} h</b><span>last 30 days</span></div><div><b>${leadDays}</b><span>days played</span></div><div><b>${fmtH(lead.minutes || 0)} h</b><span>in total</span></div></div></div>`
+    : `<div class="tile t-hero plain"><div class="q">Nothing played yet</div><h2>${f.games.length} games</h2></div>`);
+  out.push(`<div class="tile t-m30"><div class="q">Last 30 days</div><div class="big">${fmtH(f.m30)} h</div><div class="foot">${m30Foot(f)}</div></div>`);
+  const s = streaks(f.snap.date);
+  const last14 = histWindow(f.snap.date, 14);
+  out.push(`<div class="tile t-streak"><div class="q">Days in a row</div><div class="big">${s.cur} ${s.cur === 1 ? "day" : "days"}</div>
+    <div class="dots" role="img" aria-label="Played or not, last 14 days">${last14.map(d => `<i class="${!d.tracked ? "nr" : d.mins ? "on" : ""}" title="${esc(fmtDay(d.iso, {weekday: "short", day: "numeric", month: "short"}))}: ${!d.tracked ? "not recorded yet" : d.mins ? fmtH(d.mins) + " h" : "not played"}"></i>`).join("")}</div>
+    <div class="foot">Longest so far: <b>${s.best} ${s.best === 1 ? "day" : "days"}</b></div></div>`);
+  out.push(`<div class="tile t-weeks"><div class="q">Hours per week</div><svg id="weeks" preserveAspectRatio="none" role="img" aria-label="Hours played per week, last 8 weeks"></svg></div>`);
+  out.push(nextTile(f));
+  out.push(`<div class="tile t-backlog"><div class="q">Never played</div><div class="big">${f.never.length}</div>
+    ${state.options.images && f.never.length ? `<div class="stack">${f.never.slice(0, 5).map(g => `<img alt="${esc(g.name)}" title="${esc(g.name)}" src="${artUrl(g.appid, "library_600x900.jpg")}" onerror="this.onerror=null;this.src='${artUrl(g.appid, "header.jpg")}'">`).join("")}</div>`
+      : `<div class="foot">${f.never.length ? esc(f.never.slice(0, 3).map(g => g.name).join(", ")) + (f.never.length > 3 ? " and more" : "") : "Everything has been played"}</div>`}</div>`);
+  const big = f.inst[0];
+  out.push(`<div class="tile t-disk"><div class="q">Installed</div><div class="big">${fmtBytes(f.diskBytes) || "0 GB"}</div>
+    <div class="foot">${f.inst.length} games.${big && big.bytes ? ` Biggest: <b>${esc(big.name)}</b>, ${fmtBytes(big.bytes).replace(" ", "&nbsp;")}` : ""}</div></div>`);
+  const cols = collectionTotals(f.games).slice(0, 4), cmax = cols.length ? Math.max(cols[0][1].mins, 1) : 1;
+  out.push(`<div class="tile t-cols"><div class="q">Hours by collection</div>${cols.map(([c, v]) =>
+    `<div class="r" title="${esc(c)}: ${fmtH(v.mins)} h over ${v.n} games"><span>${esc(c)}</span><span class="num">${fmtH(v.mins)} h</span><s style="width:${(v.mins / cmax * 100).toFixed(1)}%"></s></div>`).join("")}</div>`);
+  out.push(`<div class="tile t-changes changes"><div class="th"><span class="q">Changes, ${changesSub(f.snap)}</span></div>${changes(f.games, f.prevGames)}</div>`);
+  out.push(`<div class="tile t-chart"><div class="th"><span class="q">Playtime per day, <span id="chart-sub"></span></span>${rangeButtons()}</div>${chartBlock()}</div>`);
+  return `<div class="bento">${out.join("")}</div>
+    <section><div class="h"><h2>Library</h2><span class="sub" id="lib-count"></span></div><div class="panel">${libraryTable(f.games)}</div></section>`;
+}
+function m30Foot(f) {
+  if (state.hist.since && state.hist.since > f.last30[0].iso) return `recording since ${fmtDay(state.hist.since)}`;
+  if (!f.p30tracked) return "";
+  const d = f.m30 - f.p30;
+  return `<b>${d >= 0 ? "+" : "-"}${fmtH(Math.abs(d))} h</b> on the 30 days before`;
+}
+function nextTile(f) {
+  const snap = f.snap;
+  const next = snap.wishlistStatus && snap.wishlistStatus !== "off" ? upcoming(snap)[0] : null;
+  if (!next) {
+    // no wishlist to count down to: the library size takes the slot
+    const n = f.games.length;
+    return `<div class="tile t-next plain"><div class="q">Games</div><div class="big">${n.toLocaleString()}</div>
+      <div class="foot">${f.prevGames ? signed(n - f.prevGames.length, "since " + fmtDay(snap.previous.date)) : "in the library"}</div></div>`;
+  }
+  const n = next.releaseISO ? daysBetween(snap.date, next.releaseISO) : null;
+  const big = n == null ? "Soon" : n <= 0 ? "Out now" : n === 1 ? "Tomorrow" : `${n} days`;
+  const bg = state.options.images ? ` data-bg="${artUrl(next.appid, "header.jpg")}"` : "";
+  return `<a class="tile t-next plain plain-link"${bg} href="${storeUrl(next.appid)}" target="_blank" rel="noopener" style="text-decoration:none">
+    <div class="q">Next on your wishlist</div><div class="big">${big}</div>
+    <div class="foot"><b>${esc(next.name)}</b><br>${esc(next.releaseISO ? fmtDay(next.releaseISO, {day: "numeric", month: "short", year: "numeric"}) : next.release || "To be announced")}</div></a>`;
+}
+function drawWeeks() {
+  // the wishlist tile shows its art only once it has loaded
+  document.querySelectorAll("[data-bg]").forEach(el => {
+    const probe = new Image();
+    probe.onload = () => { el.classList.remove("plain"); el.style.backgroundImage = `url(${probe.src})`; };
+    probe.src = el.dataset.bg;
+  });
+  const el = $("#weeks");
+  const W = 520, H = 110, B = 18, T = 14, n = 8, end = toUTC(state.snap.date), list = [];
+  for (let w = n - 1; w >= 0; w--) {
+    const days = histWindow(isoOf(end - w * 7 * DAY), 7);
+    list.push({label: fmtDay(days[0].iso), v: sum(days.map(d => d.mins)), rec: days.some(d => d.tracked)});
+  }
+  const max = Math.max(...list.map(x => x.v), 1), gw = W / n, bw = gw * .58;
+  el.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  el.innerHTML = list.map((x, i) => {
+    const h = x.v / max * (H - B - T), X = i * gw + (gw - bw) / 2, r = Math.min(4, h);
+    const bar = !x.rec ? `<rect x="${X}" y="${T}" width="${bw}" height="${H - B - T}" rx="4" fill="var(--surface-2)"><title>Week of ${esc(x.label)}: not recorded yet</title></rect>`
+      : h ? `<path fill="var(--accent)" d="M${X},${H - B} V${H - B - h + r} q0,-${r} ${r},-${r} H${X + bw - r} q${r},0 ${r},${r} V${H - B} Z"><title>Week of ${esc(x.label)}: ${fmtH(x.v)} h</title></path>` : "";
+    const val = x.rec && x.v ? `<text class="val" x="${X + bw / 2}" y="${H - B - h - 4}" text-anchor="middle">${fmtH(x.v)}</text>` : "";
+    return bar + val + `<text class="tick" x="${X + bw / 2}" y="${H - 3}" text-anchor="middle">${esc(x.label)}</text>`;
+  }).join("");
+}
+
+// ---------- pieces both layouts use ----------
+function signed(n, suffix) { return n > 0 ? `+${n} ${suffix}` : n < 0 ? `${n} ${suffix}` : `no change ${suffix}`; }
+function tags(g) {
+  const t = [g.favourite ? "favourite" : "", g.type === "demo" ? "demo" : "", g.hidden ? "hidden" : "", g.owned === false ? "not owned" : ""].filter(Boolean);
+  return t.map(x => `<span class="tag">${x}</span>`).join("");
 }
 
 function changes(games, prevGames) {
@@ -403,12 +732,7 @@ function changes(games, prevGames) {
 }
 
 function collections(games) {
-  const by = {};
-  games.forEach(g => {
-    const cols = g.collections && g.collections.length ? g.collections : [g.type === "demo" ? "Demos" : "Not in a collection"];
-    cols.forEach(c => { by[c] = by[c] || {mins: 0, n: 0}; by[c].mins += g.minutes || 0; by[c].n++; });
-  });
-  const rows = Object.entries(by).sort((a, b) => b[1].mins - a[1].mins);
+  const rows = collectionTotals(games);
   if (!rows.length) return `<p class="empty">No games.</p>`;
   const max = Math.max(...rows.map(r => r[1].mins), 1);
   return `<div class="bars">${rows.slice(0, 10).map(([c, v]) => `<div class="bar-row" title="${esc(c)}: ${fmtH(v.mins)} h over ${v.n} games">
@@ -419,23 +743,14 @@ function collections(games) {
 
 function wishlist(snap) {
   const wl = snap.wishlist || [];
-  const today = snap.date;
-  const soon = wl.filter(w => w.comingSoon).sort((a, b) =>
-    (a.releaseISO || "9999") < (b.releaseISO || "9999") ? -1 : (a.releaseISO || "9999") > (b.releaseISO || "9999") ? 1 : a.name.localeCompare(b.name));
+  const soon = upcoming(snap);
   const out = wl.filter(w => !w.comingSoon);
   const hint = snap.wishlistStatus === "private" ? `<p class="empty">Steam would not share the wishlist. Set your profile's <b>Game details</b> to Public (Steam &gt; Edit Profile &gt; Privacy Settings).</p>`
     : snap.wishlistStatus === "error" ? `<p class="empty">The wishlist could not be fetched at this snapshot; showing the last list that was.</p>` : "";
-  const card = w => {
-    let when = esc(w.release || "");
-    if (w.comingSoon && w.releaseISO) {
-      const n = daysBetween(today, w.releaseISO);
-      when = `${esc(fmtDay(w.releaseISO, {day: "numeric", month: "short", year: "numeric"}))} <span class="chip">${n <= 0 ? "out now" : n === 1 ? "tomorrow" : "in " + n + " days"}</span>`;
-    }
-    return `<div class="w">${img(w.appid)}<div class="t"><div class="n"><a href="${storeUrl(w.appid)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(w.name)}</a></div><div class="d">${when || "&nbsp;"}</div></div></div>`;
-  };
-  return `<section class="card" style="margin-bottom:12px"><div class="card-head"><div><h2>Wishlist</h2><div class="sub">${wl.length} games · ${soon.length} not out yet</div></div></div>
+  const card = w => `<div class="wi">${artBox(w.appid, w.name, "header.jpg", "capsule_616x353.jpg")}<div class="nm" title="${esc(w.name)}">${esc(w.name)}</div><div class="mt">${whenOut(w, snap.date) || "&nbsp;"}</div></div>`;
+  return `<section><div class="h"><h2>Wishlist</h2><span class="sub">${wl.length} games, ${soon.length} not out yet</span></div>
     ${hint}${soon.length ? `<div class="wish">${soon.map(card).join("")}</div>` : ""}
-    ${out.length ? `<details class="more"><summary class="muted">${out.length} already released</summary><div class="wish" style="margin-top:8px">${out.map(card).join("")}</div></details>` : ""}
+    ${out.length ? `<details class="more"><summary class="muted">${out.length} already released</summary><div class="wish" style="margin-top:12px">${out.map(card).join("")}</div></details>` : ""}
   </section>`;
 }
 
@@ -446,7 +761,8 @@ function niceStep(max) {
 }
 function drawChart(days, names) {
   const el = $("#chart");
-  const W = el.clientWidth || 600, H = 220, L = 34, R = 4, T = 8, B = 24;
+  if (!el) return;
+  const W = el.clientWidth || 600, H = 240, L = 34, R = 4, T = 8, B = 24;
   const hours = days.map(d => d.mins / 60);
   const maxH = Math.max(...hours, 1);
   const step = niceStep(maxH);
@@ -505,16 +821,34 @@ function drawChart(days, names) {
 let resizeTimer;
 addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => state.snap && $("#chart") && drawChart(histWindow(state.snap.date, state.range), Object.fromEntries(state.snap.games.map(g => [g.appid, g.name]))), 150); });
 
-// ---------- library table ----------
-function library(games) {
+// ---------- library (table in Tiles, covers in Shelf) ----------
+function filterGames(games) {
+  const q = state.q.trim().toLowerCase();
+  return games.filter(g => (!q || g.name.toLowerCase().includes(q)));
+}
+function sortGames(rows) {
+  const {key, dir} = state.sort;
+  return rows.sort((a, b) => key === "name" ? dir * a.name.localeCompare(b.name) : dir * ((a[key] || 0) - (b[key] || 0)) || a.name.localeCompare(b.name));
+}
+function hiddenToggle() {
+  return (state.snap.games || []).some(g => g.hidden) ? `<label><input type="checkbox" id="hid"${state.hidden ? " checked" : ""}> show hidden</label>` : "";
+}
+function wireHidden() {
+  const hid = $("#hid");
+  if (hid) hid.onchange = e => { state.hidden = e.target.checked; render(); };
+}
+function showMore(total, shown, again) {
+  $("#lib-more").innerHTML = total > shown ? `<button id="show-more">Show all ${total}</button>` : "";
+  const more = $("#show-more");
+  if (more) more.onclick = () => { state.limit = Infinity; again(); };
+}
+function libraryTable(games) {
   const cols = [...new Set(games.flatMap(g => g.collections || []))].sort((a, b) => a.localeCompare(b));
-  const hasHidden = (state.snap.games || []).some(g => g.hidden);
-  return `<section class="card"><div class="card-head"><div><h2>Library</h2><div class="sub" id="lib-count"></div></div></div>
-    <div class="lib-tools">
+  return `<div class="lib-tools">
       <input type="search" id="q" placeholder="Search games" value="${esc(state.q)}" aria-label="Search games">
       <select id="col" aria-label="Collection"><option value="">All collections</option>${cols.map(c => `<option${c === state.col ? " selected" : ""}>${esc(c)}</option>`).join("")}<option value="\u0000none"${state.col === "\u0000none" ? " selected" : ""}>Not in a collection</option></select>
       <label><input type="checkbox" id="inst"${state.installed ? " checked" : ""}> installed</label>
-      ${hasHidden ? `<label><input type="checkbox" id="hid"${state.hidden ? " checked" : ""}> show hidden</label>` : ""}
+      ${hiddenToggle()}
     </div>
     <div style="overflow-x:auto"><table><thead><tr>
       <th data-sort="name">Game<span class="arrow"></span></th>
@@ -523,14 +857,13 @@ function library(games) {
       <th class="col-col">Collection</th>
       <th data-sort="bytes" class="num col-size">Size<span class="arrow"></span></th>
     </tr></thead><tbody id="rows"></tbody></table></div>
-    <div class="more" id="lib-more"></div></section>`;
+    <div class="more" id="lib-more"></div>`;
 }
-function wireLibrary() {
+function wireTable() {
   $("#q").oninput = e => { state.q = e.target.value; state.limit = 50; renderRows(); };
   $("#col").onchange = e => { state.col = e.target.value; state.limit = 50; renderRows(); };
   $("#inst").onchange = e => { state.installed = e.target.checked; renderRows(); };
-  const hid = $("#hid");
-  if (hid) hid.onchange = e => { state.hidden = e.target.checked; render(); };
+  wireHidden();
   document.querySelectorAll("th[data-sort]").forEach(th => th.onclick = () => {
     const k = th.dataset.sort;
     state.sort = state.sort.key === k ? {key: k, dir: -state.sort.dir} : {key: k, dir: k === "name" ? 1 : -1};
@@ -538,28 +871,22 @@ function wireLibrary() {
   });
 }
 function renderRows() {
-  const q = state.q.trim().toLowerCase();
-  let rows = visibleGames(state.snap).filter(g =>
-    (!q || g.name.toLowerCase().includes(q)) &&
+  const rows = sortGames(filterGames(visibleGames(state.snap)).filter(g =>
     (!state.installed || g.installed) &&
-    (!state.col || (state.col === "\u0000none" ? !(g.collections || []).length : (g.collections || []).includes(state.col))));
+    (!state.col || (state.col === "\u0000none" ? !(g.collections || []).length : (g.collections || []).includes(state.col)))));
   const {key, dir} = state.sort;
-  rows.sort((a, b) => key === "name" ? dir * a.name.localeCompare(b.name) : dir * ((a[key] || 0) - (b[key] || 0)) || a.name.localeCompare(b.name));
   document.querySelectorAll("th[data-sort] .arrow").forEach(s => s.textContent = s.parentElement.dataset.sort === key ? (dir > 0 ? "↑" : "↓") : "");
   $("#lib-count").textContent = `${rows.length} of ${visibleGames(state.snap).length} games`;
   const shown = rows.slice(0, state.limit);
   $("#rows").innerHTML = shown.map(g => {
-    const tags = [g.favourite ? "favourite" : "", g.type === "demo" ? "demo" : "", g.hidden ? "hidden" : "", g.owned === false ? "not owned" : ""].filter(Boolean);
     const lp = g.lastPlayed ? new Date(g.lastPlayed * 1000).toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"}) : "never";
-    return `<tr><td class="game">${img(g.appid)}<span><a href="${storeUrl(g.appid)}" target="_blank" rel="noopener">${esc(g.name)}</a>${tags.map(t => `<span class="tag">${t}</span>`).join("")}</span></td>
+    return `<tr><td class="game"><div class="gc">${img(g.appid)}<span><a href="${storeUrl(g.appid)}" target="_blank" rel="noopener">${esc(g.name)}</a>${tags(g)}</span></div></td>
       <td class="num">${g.minutes ? fmtH(g.minutes) : "<span class='muted'>-</span>"}</td>
       <td class="num muted">${lp}</td>
       <td class="col-col muted">${esc((g.collections || []).join(", "))}</td>
       <td class="num col-size muted">${g.installed ? fmtBytes(g.bytes) : ""}</td></tr>`;
   }).join("") || `<tr><td colspan="5" class="empty">No games match.</td></tr>`;
-  $("#lib-more").innerHTML = rows.length > shown.length ? `<button id="show-more">Show all ${rows.length}</button>` : "";
-  const more = $("#show-more");
-  if (more) more.onclick = () => { state.limit = Infinity; renderRows(); };
+  showMore(rows.length, shown.length, renderRows);
 }
 
 // ---------- updates ----------

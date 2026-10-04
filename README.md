@@ -270,16 +270,29 @@ python -m steam_snapshot serve --open   # and open it in your browser
 python -m steam_snapshot serve --port 9000
 ```
 
-- **Tiles:** games, total hours, hours in the last 30 days, installed size, never played.
-  Each tile compares against the previous snapshot or period.
-- **Playtime per day:** 30 or 90 days, with the games behind each bar on hover. Days
-  before your first snapshot are shaded as "not recorded yet" rather than shown as zero.
-- **Played lately:** most hours in the last 30 days.
+The page has two layouts, switched with **Shelf | Tiles** in the header. It remembers
+the one you used last. Both show the same data.
+
+**Shelf** puts the cover art first:
+- **The game you're on:** the one with the most hours this month, on its own artwork,
+  with its hours per day.
+- **Played lately:** cover art of the games with the most hours in the last 30 days.
+- **Playtime per day:** 30 or 90 days, with the games behind each bar on hover, next to
+  the headline numbers (last 30 days, total hours, games, never played, installed size).
+  Days before your first snapshot are shaded as "not recorded yet" rather than shown as zero.
 - **Changes:** what you played, bought or lost since the previous snapshot.
 - **Collections:** hours per Steam collection.
 - **Wishlist:** unreleased games first, with a countdown for the ones that have a date.
-- **Library:** search, filter by collection or installed, sort by any column.
-- **Snapshot picker (top right):** view the library as it was on any stored day.
+- **Library:** every game as a cover. Filter by installed, never played or collection;
+  search; sort by hours, last played, name or size.
+
+**Tiles** answers one question per tile: what you're mostly playing, hours in the last
+30 days, how many days in a row you've played, hours per week, the next wishlist
+release, games you've never played, disk space, and hours per collection. Below them
+are the changes, playtime per day, and the library as a sortable table.
+
+The **snapshot picker** (top right) shows the library as it was on any stored day.
+With `images = false` the cover art is replaced by the games' names.
 
 If several Steam accounts have snapshots, an account picker appears. The page follows
 your system's light or dark mode; the ◐ button switches it.
