@@ -359,7 +359,15 @@ dialog.yir-dlg .row { display: flex; gap: 10px; align-items: center; margin-bott
 dialog.yir-dlg .row label { width: 100px; color: var(--ink-2); }
 dialog.yir-dlg .row select { flex: 1; }
 dialog.yir-dlg .hint { font-size: 12.5px; color: var(--muted); margin: 4px 0 16px; }
-dialog.yir-dlg .warn { font-size: 13px; color: var(--ink); background: color-mix(in srgb, #e3a35a 16%, transparent); border-left: 3px solid #e3a35a; border-radius: 6px; padding: 8px 10px; margin: 4px 0 12px; }
+dialog.yir-dlg .cov { font-size: 12.5px; color: var(--ink-2); margin: 4px 0 12px; }
+dialog.yir-dlg .cov b { color: var(--ink); }
+dialog.yir-dlg .cov p { margin: 6px 0 0; color: var(--ink); }
+/* a span of dates with the recorded part filled in and the rest hatched */
+.covbar .bar { position: relative; height: 8px; border-radius: 4px; margin-top: 6px; overflow: hidden;
+  background: repeating-linear-gradient(135deg, rgba(128, 128, 128, .3) 0 3px, transparent 3px 6px); }
+.covbar .bar b { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 4px; }
+.covbar .ends { position: relative; height: 16px; margin-top: 4px; font-size: 11.5px; color: var(--muted); }
+.covbar .ends span { position: absolute; top: 0; white-space: nowrap; }
 dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* the slideshow is always dark, like Steam Replay */
@@ -410,14 +418,16 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 .show .intro .yr { font-size: clamp(90px, 16vw, 190px); font-weight: 800; letter-spacing: -.05em; line-height: .95;
   background: linear-gradient(180deg, #fff 30%, color-mix(in srgb, var(--s-accent) 70%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .show .intro p { color: var(--s-ink-2); font-size: 18px; margin: 14px 0 0; }
-.show .intro .note { display: inline-block; margin-top: 22px; font-size: 14px; color: var(--s-ink-2); background: rgba(227, 163, 90, .12); border: 1px solid rgba(227, 163, 90, .35); border-radius: 999px; padding: 6px 14px; }
+.show .intro .covbar { width: min(560px, 70%); margin: 20px auto 0; }
+.show .covbar .bar { height: 6px; background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .16) 0 3px, transparent 3px 6px); }
+.show .covbar .bar b { background: var(--s-accent); }
+.show .covbar .ends { font-size: 13px; color: var(--s-muted); margin-top: 6px; }
 .show .legend { display: flex; gap: 18px; color: var(--s-ink-2); font-size: 13px; margin-bottom: 10px; }
 .show .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .show .mchart { position: relative; }
 .show .mchart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .show .mchart .t { fill: var(--s-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .show .mchart .gl { stroke: rgba(255, 255, 255, .08); }
-.show .mchart .nr { fill: rgba(255, 255, 255, .035); }
 .show .mtip { position: absolute; pointer-events: none; background: #1a1a19; border: 1px solid rgba(255, 255, 255, .12); border-radius: 8px; padding: 7px 10px; font-size: 13px; white-space: nowrap; box-shadow: 0 6px 20px rgba(0, 0, 0, .4); }
 .show .mtip b { display: block; }
 .show .top { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
@@ -536,7 +546,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
   <p>A slideshow of your year on Steam, compared with the year before.</p>
   <div class="row"><label for="yirYear">Year</label><select id="yirYear"></select></div>
   <div class="row"><label for="yirCmp">Compare with</label><select id="yirCmp"></select></div>
-  <div class="warn" id="yirWarn" hidden></div>
+  <div class="cov" id="yirWarn" hidden></div>
   <div class="hint" id="yirHint"></div>
   <div class="actions"><button id="yirCancel">Cancel</button><button class="yir-btn" id="yirGo">Generate</button></div>
 </dialog>
@@ -1297,12 +1307,25 @@ function yirCoverage(st) {
           snapDays: state.snaps.filter(s => s.date >= from && s.date <= st.end).length};
 }
 const fullDate = iso => fmtDay(iso, {day: "numeric", month: "long", year: "numeric"});
-function yirWarning(cov) {
-  const out = [];
-  if (cov.partial) out.push(`Your snapshots start on ${fullDate(cov.since)}, so this review only covers ${cov.tracked} of the ${cov.n} days. Steam keeps each game's total, not when it was played, so earlier playtime can't be counted.`);
-  if (cov.tracked < 30) out.push("With this few days recorded, most slides will look thin.");
-  if (cov.tracked >= 7 && cov.snapDays < cov.tracked / 2) out.push(`Snapshots ran on only ${cov.snapDays} of those days. Play on a day without one is counted on the next snapshot's day, so streaks and daily figures are rough.`);
-  return out.join(" ");
+// start..end as a strip with from..to filled in. mid labels where the filled part
+// starts; an end label it would run into is left out.
+function covBar(start, end, from, to, ends, mid) {
+  const n = Math.max(1, daysBetween(start, end)), x = daysBetween(start, from) / n * 100, r = 100 - daysBetween(start, to) / n * 100;
+  const pos = Math.min(Math.max(x, 8), 92), room = mid.length * 1.4 + 6;
+  return `<div class="covbar"><div class="bar"><b style="left:${x.toFixed(2)}%;right:${r.toFixed(2)}%"></b></div><div class="ends">`
+    + (pos > room ? `<span style="left:0">${esc(ends[0])}</span>` : "")
+    + `<span style="left:${pos.toFixed(2)}%;transform:translateX(-50%)">${esc(mid)}</span>`
+    + (pos < 100 - room ? `<span style="right:0">${esc(ends[1])}</span>` : "") + "</div></div>";
+}
+function yirWarning(cov, w) {
+  let html = "";
+  if (cov.partial) html += `<b>${cov.tracked} of ${cov.n} days recorded</b>, from your first snapshot`
+    + covBar(w.start, w.end, cov.from, w.end, [fmtDay(w.start), fmtDay(w.end)], fmtDay(cov.since));
+  const more = [];
+  if (cov.tracked < 30) more.push("With this few days recorded, most slides will look thin.");
+  if (cov.tracked >= 7 && cov.snapDays < cov.tracked / 2) more.push(`Snapshots ran on only ${cov.snapDays} of those days. Play on a day without one is counted on the next snapshot's day, so streaks and daily figures are rough.`);
+  if (more.length) html += `<p>${more.join(" ")}</p>`;
+  return html;
 }
 const localIso = t => { const d = new Date(t * 1000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 function yirCompareOk(year) {
@@ -1365,7 +1388,7 @@ function yirSlides(Y) {
   const {cov} = Y, since = cov.since, partial = cov.partial;
   out.push(`<section class="slide intro"><div class="kicker">Your year on Steam</div><div class="yr">${year}</div>
     <p>${partial ? `${longDate(since)} to ${longDate(w.end)}` : range}${prev ? `, compared with the same dates in ${py}` : ""}</p>
-    ${partial ? `<div class="note">Recorded from your first snapshot: ${cov.tracked} of ${cov.n} days so far</div>` : ""}</section>`);
+    ${partial ? covBar(`${year}-01-01`, `${year}-12-31`, cov.from, w.end, [fmtDay(`${year}-01-01`, {month: "short"}), fmtDay(`${year}-12-31`, {month: "short"})], `first snapshot, ${fmtDay(since)}`) : ""}</section>`);
 
   // time played
   const perDay = cur.total / Math.max(1, cur.tracked);
@@ -1380,8 +1403,8 @@ function yirSlides(Y) {
   const months = cur.months.slice(0, lastM), topM = months.indexOf(Math.max(...months));
   const MN = Array.from({length: 12}, (_, i) => new Date(Date.UTC(2000, i, 1)).toLocaleDateString(undefined, {month: "short", timeZone: "UTC"}));
   const MLONG = Array.from({length: 12}, (_, i) => new Date(Date.UTC(2000, i, 1)).toLocaleDateString(undefined, {month: "long", timeZone: "UTC"}));
-  if (cur.total) out.push(`<section class="slide"><div class="kicker">Month by month</div>
-    <h2>${MLONG[topM]} was your biggest${partial ? " recorded" : ""} month, at ${hrs(months[topM])}</h2>
+  if (cur.total) out.push(`<section class="slide"><div class="kicker">Month by month${partial ? ` · ${longDate(since)} onward` : ""}</div>
+    <h2>${MLONG[topM]} was your biggest month, at ${hrs(months[topM])}</h2>
     <div class="legend"><span><i style="background:var(--s-accent)"></i>${year}</span>${prev ? `<span><i style="background:var(--s-last)"></i>${py}</span>` : ""}</div>
     <div class="mchart" id="yirMonths">${monthChart(cur.months, prev && prev.months, lastM, MN, partial ? +since.slice(5, 7) - 1 : 0)}<div class="mtip" hidden></div></div></section>`);
 
@@ -1482,18 +1505,19 @@ function monthChart(curM, prevM, lastM, MN, fromM = 0) {
   const vals = [...curM.slice(0, lastM), ...(prevM ? prevM.slice(0, lastM) : [])];
   const maxH = Math.max(...vals, 60) / 60, step = niceStep(maxH), top = Math.ceil(maxH / step) * step;
   const y = h => T + (H - T - B) * (1 - h / top);
-  const gw = (W - L) / 12, bw = Math.min(26, gw * .32);
+  // before the first snapshot there's nothing to show, so those months are left off
+  const shown = MN.map((m, i) => i).filter(i => i >= fromM && (!fromM || i < lastM));
+  const gw = (W - L) / shown.length, bw = Math.min(shown.length < 12 && !prevM ? 44 : 26, gw * .32);
   const bar = (x, m, fill) => { if (!m) return ""; const y1 = y(m / 60), r = Math.min(4, H - B - y1);
     return `<path fill="${fill}" d="M${x},${H - B} V${y1 + r} q0,-${r} ${r},-${r} H${x + bw - r} q${r},0 ${r},${r} V${H - B} Z"/>`; };
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hours per month">`;
-  if (fromM) s += `<rect class="nr" x="${L}" y="${T}" width="${gw * fromM}" height="${H - B - T}" rx="6"/><text class="t" x="${L + gw * fromM / 2}" y="${T + (H - B - T) / 2}" text-anchor="middle">not recorded</text>`;
   for (let v = 0; v <= top + 1e-9; v += step) s += `<line class="gl" x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="t" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
-  MN.forEach((m, i) => {
-    const cx = L + gw * i + gw / 2;
+  shown.forEach((i, k) => {
+    const m = MN[i], cx = L + gw * k + gw / 2;
     if (i < lastM) {
       if (prevM) s += bar(cx - bw - 1, prevM[i], "var(--s-last)");
       s += bar(prevM ? cx + 1 : cx - bw / 2, curM[i], "var(--s-accent)");
-      s += `<rect data-m="${i}" x="${L + gw * i}" y="0" width="${gw}" height="${H - B}" fill="transparent"/>`;
+      s += `<rect data-m="${i}" x="${L + gw * k}" y="0" width="${gw}" height="${H - B}" fill="transparent"/>`;
     }
     s += `<text class="t" x="${cx}" y="${H - 6}" text-anchor="middle">${m}</text>`;
   });
@@ -1525,12 +1549,14 @@ function openYirDialog() {
   const years = yirYears();
   ys.innerHTML = years.map(y => `<option value="${y}">${y}${y === +state.snap.date.slice(0, 4) && !state.snap.date.endsWith("12-31") ? " (so far)" : ""}</option>`).join("");
   const sync = () => {
-    const y = +ys.value, ok = yirCompareOk(y), w = yirWindow(y), warn = yirWarning(yirCoverage(yirStats(w.start, w.end)));
+    const y = +ys.value, ok = yirCompareOk(y), w = yirWindow(y), cov = yirCoverage(yirStats(w.start, w.end)), warn = yirWarning(cov, w);
     cs.innerHTML = `<option value="1"${ok ? "" : " disabled"}>${y - 1}${ok ? "" : " (not recorded)"}</option><option value="0"${ok ? "" : " selected"}>Nothing</option>`;
-    $("#yirWarn").textContent = warn;
+    $("#yirWarn").innerHTML = warn;
     $("#yirWarn").hidden = !warn;
-    $("#yirHint").textContent = (ok ? (w.end.endsWith("12-31") ? "Uses the whole year. " : `Uses ${longDate(w.start)} to ${longDate(w.end)} of each year, so a year still in progress is compared fairly. `)
-      : `${y - 1} can't be compared: your snapshots start on ${fullDate(state.hist.since)}. The games list can show older "last played" dates because Steam keeps that one date per game, but not how long you played on which day. `)
+    const steam = "Steam keeps each game's total and last-played date, not playtime per day.";
+    $("#yirHint").textContent = (cov.partial ? `Earlier days can't be filled in: ${steam}${ok ? "" : ` That's also why ${y - 1} can't be compared.`} `
+      : !ok ? `${y - 1} can't be compared: your snapshots start on ${fullDate(cov.since)}. ${steam} `
+      : w.end.endsWith("12-31") ? "Uses the whole year. " : `Uses ${longDate(w.start)} to ${longDate(w.end)} of each year, so a year still in progress is compared fairly. `)
       + "Built from your snapshots and history on this computer. Nothing is sent anywhere.";
   };
   ys.onchange = sync;
