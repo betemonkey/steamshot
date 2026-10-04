@@ -18,7 +18,7 @@
   --grid: #e3e2dc;
   --axis: #c3c2b7;
   --border: rgba(21, 21, 20, .10);
-  --accent: #2a78d6; --yir-bg: #2974d0;
+  --accent: #2a78d6; --accent-deep: #2974d0;
   --accent-wash: #e1ecfa;
   --on-accent: #ffffff;
   --good: #006300;
@@ -36,7 +36,7 @@
     --grid: #2a2a2c;
     --axis: #383835;
     --border: rgba(255, 255, 255, .09);
-    --accent: #3987e5; --yir-bg: #3275c7;
+    --accent: #3987e5; --accent-deep: #3275c7;
     --accent-wash: #17263a;
     --on-accent: #08121f;
     --good: #0ca30c;
@@ -53,7 +53,7 @@
   --grid: #2a2a2c;
   --axis: #383835;
   --border: rgba(255, 255, 255, .09);
-  --accent: #3987e5; --yir-bg: #3275c7;
+  --accent: #3987e5; --accent-deep: #3275c7;
   --accent-wash: #17263a;
   --on-accent: #08121f;
   --good: #0ca30c;
@@ -228,8 +228,9 @@ details.table-view table { margin-top: 6px; }
 .t-hero.plain { background: var(--accent-wash); color: var(--ink); }
 .t-hero.plain::before { display: none; }
 .t-hero.plain .q, .t-hero.plain .stats span { color: var(--ink-2); }
-.t-m30 { grid-area: m30; background: var(--accent); color: var(--on-accent); }
-.t-m30 .q, .t-m30 .foot, .t-m30 .foot b { color: var(--on-accent); opacity: .92; }
+/* white on --accent-deep, as the Year in review button: 4.6:1 or better in every palette */
+.t-m30 { grid-area: m30; background: var(--accent-deep); color: #fff; }
+.t-m30 .q, .t-m30 .foot, .t-m30 .foot b { color: #fff; }
 .t-streak { grid-area: streak; }
 .dots { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin-top: 14px; }
 .dots i { aspect-ratio: 1; border-radius: 50%; background: var(--surface-2); }
@@ -289,7 +290,7 @@ html:root[data-skin="steam"] {
   --page: #1b2838; --surface: #22344a; --surface-2: #2c435c;
   --ink: #e8f0f7; --ink-2: #a9bccd; --muted: #7d92a6;
   --grid: #2e4157; --axis: #3d536b; --border: rgba(160, 200, 240, .12);
-  --accent: #66c0f4; --accent-wash: #1f4560; --on-accent: #0b1b28; --good: #a4d007; --yir-bg: #417b9c;
+  --accent: #66c0f4; --accent-wash: #1f4560; --on-accent: #0b1b28; --good: #a4d007; --accent-deep: #417b9c;
 }
 /* Slate: a softer blue-grey, dark but not black */
 html:root[data-skin="slate"] {
@@ -297,7 +298,7 @@ html:root[data-skin="slate"] {
   --page: #1f232b; --surface: #2a2f38; --surface-2: #353b46;
   --ink: #eef0f3; --ink-2: #b9c0ca; --muted: #8a93a2;
   --grid: #363c47; --axis: #454c58; --border: rgba(255, 255, 255, .09);
-  --accent: #5b9df0; --accent-wash: #27384f; --on-accent: #0b1420; --good: #4cc36b; --yir-bg: #4476b4;
+  --accent: #5b9df0; --accent-wash: #27384f; --on-accent: #0b1420; --good: #4cc36b; --accent-deep: #4476b4;
 }
 /* Forest: deep green with an emerald accent */
 html:root[data-skin="forest"] {
@@ -305,7 +306,7 @@ html:root[data-skin="forest"] {
   --page: #13211d; --surface: #1b2d27; --surface-2: #243b34;
   --ink: #ecf4f0; --ink-2: #aac4b9; --muted: #7e988d;
   --grid: #263b33; --axis: #344b42; --border: rgba(200, 255, 230, .09);
-  --accent: #46c98d; --accent-wash: #1a3d2f; --on-accent: #062016; --good: #9be36c; --yir-bg: #2d835c;
+  --accent: #46c98d; --accent-wash: #1a3d2f; --on-accent: #062016; --good: #9be36c; --accent-deep: #2d835c;
 }
 /* Ember: warm charcoal with an orange accent */
 html:root[data-skin="ember"] {
@@ -313,7 +314,7 @@ html:root[data-skin="ember"] {
   --page: #1f1b18; --surface: #2a2420; --surface-2: #362e29;
   --ink: #f6f0ea; --ink-2: #cbbfb4; --muted: #998c80;
   --grid: #3b322c; --axis: #4b4038; --border: rgba(255, 230, 210, .09);
-  --accent: #f08a4f; --accent-wash: #40291b; --on-accent: #1f1007; --good: #8fd16a; --yir-bg: #b55b26;
+  --accent: #f08a4f; --accent-wash: #40291b; --on-accent: #1f1007; --good: #8fd16a; --accent-deep: #b55b26;
 }
 /* the fade over game art takes the palette's own colour instead of black */
 html:root[data-skin] .t-hero::before { background: linear-gradient(0deg, color-mix(in srgb, var(--page) 94%, transparent) 0%, color-mix(in srgb, var(--page) 45%, transparent) 55%, transparent 100%); }
@@ -351,11 +352,12 @@ body { position: relative; }
 @media (prefers-reduced-transparency: reduce) { .bgwall { display: none; } }
 
 /* ===== Year in review ===== */
-/* white text needs a darker shade than the accent: --yir-bg per palette, each the
+/* white text needs a darker shade than the accent: --accent-deep per palette (the
+   Tiles view's last-30-days tile uses it too), each the
    smallest darkening that reaches 4.6:1 (Ember's #b55b26 is Monkey's pick) */
-.yir-btn { background: var(--yir-bg); color: #fff; border-color: transparent; font-weight: 600;
+.yir-btn { background: var(--accent-deep); color: #fff; border-color: transparent; font-weight: 600;
   display: inline-flex; align-items: center; gap: 6px; }
-.yir-btn:hover { background: var(--yir-bg); filter: brightness(1.1); }
+.yir-btn:hover { background: var(--accent-deep); filter: brightness(1.1); }
 /* drawn, not a ★ character: Segoe UI has no star, and the fallback font's
    taller line box pushed the text a pixel below the Shelf | Tiles switch */
 .yir-btn svg { width: 13px; height: 13px; flex: none; }
