@@ -304,8 +304,11 @@ Behind the page is a faint, tilted wall of your own library's covers.
 The **snapshot picker** (top right) shows the library as it was on any stored day.
 With `images = false` the cover art is replaced by the games' names.
 
-If several Steam accounts have snapshots, an account picker appears. The page follows
-your system's light or dark mode; the ◐ button switches it.
+If several Steam accounts have snapshots, an account picker appears.
+
+The colour button (top right) picks a palette: **Auto** (follows your system's light or
+dark mode), **Black**, **Steam**, **Slate**, **Forest**, **Ember** or **Light**. The choice is
+remembered per browser, and Year in review follows it too.
 
 To view it from another device, set `host = "0.0.0.0"` under `[dashboard]`. Anyone on
 your network can then see your library, since the dashboard has no login.

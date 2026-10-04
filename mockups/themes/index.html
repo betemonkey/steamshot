@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Steam snapshot</title>
+<title>Steamshot palettes</title>
 <style>
 :root {
   color-scheme: light;
@@ -263,63 +263,6 @@ footer { color: var(--ink-2); font-size: 12.5px; margin-top: 28px; }
 .notice button { padding: 2px 9px; }
 footer code, .empty code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
 
-/* ===== palettes: picked in the header; each one only changes the colour tokens ===== */
-/* Steam: the navy and light blue of the Steam store and client */
-html:root[data-skin="steam"] {
-  color-scheme: dark;
-  --page: #1b2838; --surface: #22344a; --surface-2: #2c435c;
-  --ink: #e8f0f7; --ink-2: #a9bccd; --muted: #7d92a6;
-  --grid: #2e4157; --axis: #3d536b; --border: rgba(160, 200, 240, .12);
-  --accent: #66c0f4; --accent-wash: #1f4560; --on-accent: #0b1b28; --good: #a4d007;
-}
-/* Slate: a softer blue-grey, dark but not black */
-html:root[data-skin="slate"] {
-  color-scheme: dark;
-  --page: #1f232b; --surface: #2a2f38; --surface-2: #353b46;
-  --ink: #eef0f3; --ink-2: #b9c0ca; --muted: #8a93a2;
-  --grid: #363c47; --axis: #454c58; --border: rgba(255, 255, 255, .09);
-  --accent: #5b9df0; --accent-wash: #27384f; --on-accent: #0b1420; --good: #4cc36b;
-}
-/* Forest: deep green with an emerald accent */
-html:root[data-skin="forest"] {
-  color-scheme: dark;
-  --page: #13211d; --surface: #1b2d27; --surface-2: #243b34;
-  --ink: #ecf4f0; --ink-2: #aac4b9; --muted: #7e988d;
-  --grid: #263b33; --axis: #344b42; --border: rgba(200, 255, 230, .09);
-  --accent: #46c98d; --accent-wash: #1a3d2f; --on-accent: #062016; --good: #9be36c;
-}
-/* Ember: warm charcoal with an orange accent */
-html:root[data-skin="ember"] {
-  color-scheme: dark;
-  --page: #1f1b18; --surface: #2a2420; --surface-2: #362e29;
-  --ink: #f6f0ea; --ink-2: #cbbfb4; --muted: #998c80;
-  --grid: #3b322c; --axis: #4b4038; --border: rgba(255, 230, 210, .09);
-  --accent: #f08a4f; --accent-wash: #40291b; --on-accent: #1f1007; --good: #8fd16a;
-}
-/* the fade over game art takes the palette's own colour instead of black */
-html:root[data-skin] .t-hero::before { background: linear-gradient(0deg, color-mix(in srgb, var(--page) 94%, transparent) 0%, color-mix(in srgb, var(--page) 45%, transparent) 55%, transparent 100%); }
-html:root[data-skin] .s-hero::before { background: linear-gradient(90deg, color-mix(in srgb, var(--page) 92%, transparent) 0%, color-mix(in srgb, var(--page) 60%, transparent) 45%, transparent 100%); }
-html:root[data-skin] .s-hero, html:root[data-skin] .t-hero { background-color: var(--surface); }
-/* and so does the Year in review slideshow */
-html:root[data-skin] .show { --s-accent: var(--accent); }
-html:root[data-skin="steam"] .show { background: radial-gradient(1200px 700px at 15% 0%, #2a5378 0%, transparent 60%), radial-gradient(900px 600px at 100% 100%, #1f3550 0%, transparent 55%), #121c27; }
-html:root[data-skin="slate"] .show { background: radial-gradient(1200px 700px at 15% 0%, #2c3f5c 0%, transparent 60%), radial-gradient(900px 600px at 100% 100%, #2a2f3f 0%, transparent 55%), #171a20; }
-html:root[data-skin="forest"] .show { background: radial-gradient(1200px 700px at 15% 0%, #1d4a38 0%, transparent 60%), radial-gradient(900px 600px at 100% 100%, #17332a 0%, transparent 55%), #0e1814; }
-html:root[data-skin="ember"] .show { background: radial-gradient(1200px 700px at 15% 0%, #4a2a18 0%, transparent 60%), radial-gradient(900px 600px at 100% 100%, #33241c 0%, transparent 55%), #171311; }
-
-/* the colour button and its menu */
-.palette { position: relative; }
-#theme { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; }
-.sw { width: 16px; height: 16px; border-radius: 50%; display: inline-block; flex: none; border: 1px solid rgba(128, 128, 128, .45);
-  background: linear-gradient(135deg, var(--sw-page) 50%, var(--sw-accent) 50%); }
-.pal-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 190px; padding: 6px; display: grid; gap: 2px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .28); }
-.pal-menu button { border: 0; background: none; display: flex; align-items: center; gap: 10px; text-align: left; padding: 7px 10px; border-radius: 8px; color: var(--ink); }
-.pal-menu button:hover, .pal-menu button:focus-visible { background: var(--surface-2); }
-.pal-menu button[aria-checked="true"] { background: var(--accent-wash); }
-.pal-menu button[aria-checked="true"]::after { content: "✓"; margin-left: auto; color: var(--accent); font-weight: 700; }
-.pal-menu .hint { color: var(--muted); font-size: 12px; padding: 4px 10px 2px; }
-
 /* ===== Cover wall: your own covers, tilted and faint, behind the top of the page ===== */
 body { position: relative; }
 .wrap { position: relative; z-index: 1; }
@@ -387,7 +330,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 .show .cell .sub { color: var(--s-ink-2); font-size: 14px; }
 .show .intro { text-align: center; }
 .show .intro .yr { font-size: clamp(90px, 16vw, 190px); font-weight: 800; letter-spacing: -.05em; line-height: .95;
-  background: linear-gradient(180deg, #fff 30%, color-mix(in srgb, var(--s-accent) 70%, #fff)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  background: linear-gradient(180deg, #fff 30%, #7fb2f0); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .show .intro p { color: var(--s-ink-2); font-size: 18px; margin: 14px 0 0; }
 .show .legend { display: flex; gap: 18px; color: var(--s-ink-2); font-size: 13px; margin-bottom: 10px; }
 .show .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
@@ -399,7 +342,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 .show .mtip b { display: block; }
 .show .top { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .show .top li { display: grid; grid-template-columns: 34px 184px 1fr auto; gap: 16px; align-items: center; background: rgba(255, 255, 255, .05); border-radius: 12px; padding: 10px 16px 10px 12px; }
-.show .top li:first-child { background: linear-gradient(90deg, color-mix(in srgb, var(--s-accent) 28%, transparent), rgba(255, 255, 255, .05)); }
+.show .top li:first-child { background: linear-gradient(90deg, rgba(57, 135, 229, .28), rgba(255, 255, 255, .05)); }
 .show .top .rk { font-size: 26px; font-weight: 750; color: var(--s-ink-2); text-align: center; }
 .show .top .cap { width: 184px; height: 69px; border-radius: 6px; background: #242422 center/cover; overflow: hidden; }
 .show .top .cap img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -407,7 +350,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 .show .top .m { color: var(--s-ink-2); font-size: 13px; }
 .show .top .h { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .show .badge { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 2px; }
-.show .badge.new { background: color-mix(in srgb, var(--s-accent) 25%, transparent); color: color-mix(in srgb, var(--s-accent) 55%, #fff); }
+.show .badge.new { background: rgba(57, 135, 229, .25); color: #9cc6f5; }
 .show .badge.u { background: rgba(60, 207, 60, .18); color: var(--s-good); }
 .show .badge.d { background: rgba(227, 163, 90, .18); color: var(--s-down); }
 .show .badge.s { background: rgba(255, 255, 255, .1); color: var(--s-ink-2); }
@@ -415,12 +358,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 .show .spot .pic { width: 100%; border-radius: 12px; aspect-ratio: 460 / 215; background: #242422 center/cover; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
 .show .cal { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; margin: 8px 0 6px; }
 .show .cal i { aspect-ratio: 1; border-radius: 2px; background: rgba(255, 255, 255, .06); }
-/* "i.lN" so these beat the plain ".cal i" background */
-.show i.l1 { background: color-mix(in srgb, var(--s-accent) 30%, #0b0b0d); } .show i.l2 { background: color-mix(in srgb, var(--s-accent) 60%, #0b0b0d); }
-.show i.l3 { background: var(--s-accent); } .show i.l4 { background: color-mix(in srgb, var(--s-accent) 50%, #fff); }
-.show i.l0 { background: rgba(255, 255, 255, .06); }
-.show .cal i.l1 { background: color-mix(in srgb, var(--s-accent) 30%, #0b0b0d); } .show .cal i.l2 { background: color-mix(in srgb, var(--s-accent) 60%, #0b0b0d); }
-.show .cal i.l3 { background: var(--s-accent); } .show .cal i.l4 { background: color-mix(in srgb, var(--s-accent) 50%, #fff); }
+.show .cal i.l1 { background: #1d3f6b; } .show .cal i.l2 { background: #2a63a8; } .show .cal i.l3 { background: #3987e5; } .show .cal i.l4 { background: #9cc6f5; }
 .show .cal i.nr { background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .07) 0 2px, transparent 2px 4px); }
 .show .cal i.out { background: transparent; }
 .show .cal i.st { outline: 1.5px solid #fff; outline-offset: -1px; }
@@ -434,7 +372,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 .show .share .b.l { background: var(--s-last); height: 6px; }
 .show .share .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--s-ink-2); font-size: 14px; }
 .show .share .v b { color: #fff; font-size: 16px; }
-.show .card-sum { background: linear-gradient(160deg, color-mix(in srgb, var(--s-accent) 38%, #0b0b0d), #15171d 70%); border-radius: 20px; padding: 28px 30px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); max-width: 640px; margin: 0 auto; }
+.show .card-sum { background: linear-gradient(160deg, #173a66, #151a33 70%); border-radius: 20px; padding: 28px 30px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); max-width: 640px; margin: 0 auto; }
 .show .card-sum .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
 .show .card-sum .hd b { font-size: 22px; } .show .card-sum .hd span { color: var(--s-ink-2); font-size: 14px; }
 .show .card-sum .g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 14px; }
@@ -476,6 +414,58 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
   main.fade { animation: none; }
   .cv .art { transition: none; }
 }
+/* ===== mockup: alternative palettes (only the colour tokens change) ===== */
+/* Steam: the navy and light blue of the Steam store and client */
+html:root[data-skin="steam"] {
+  color-scheme: dark;
+  --page: #1b2838; --surface: #22344a; --surface-2: #2c435c;
+  --ink: #e8f0f7; --ink-2: #a9bccd; --muted: #7d92a6;
+  --grid: #2e4157; --axis: #3d536b; --border: rgba(160, 200, 240, .12);
+  --accent: #66c0f4; --accent-wash: #1f4560; --on-accent: #0b1b28; --good: #a4d007;
+}
+/* Slate: a softer blue-grey, still dark but not black */
+html:root[data-skin="slate"] {
+  color-scheme: dark;
+  --page: #1f232b; --surface: #2a2f38; --surface-2: #353b46;
+  --ink: #eef0f3; --ink-2: #b9c0ca; --muted: #8a93a2;
+  --grid: #363c47; --axis: #454c58; --border: rgba(255, 255, 255, .09);
+  --accent: #5b9df0; --accent-wash: #27384f; --on-accent: #0b1420; --good: #4cc36b;
+}
+/* Forest: deep green with an emerald accent */
+html:root[data-skin="forest"] {
+  color-scheme: dark;
+  --page: #13211d; --surface: #1b2d27; --surface-2: #243b34;
+  --ink: #ecf4f0; --ink-2: #aac4b9; --muted: #7e988d;
+  --grid: #263b33; --axis: #344b42; --border: rgba(200, 255, 230, .09);
+  --accent: #46c98d; --accent-wash: #1a3d2f; --on-accent: #062016; --good: #9be36c;
+}
+/* Ember: warm charcoal with an orange accent */
+html:root[data-skin="ember"] {
+  color-scheme: dark;
+  --page: #1f1b18; --surface: #2a2420; --surface-2: #362e29;
+  --ink: #f6f0ea; --ink-2: #cbbfb4; --muted: #998c80;
+  --grid: #3b322c; --axis: #4b4038; --border: rgba(255, 230, 210, .09);
+  --accent: #f08a4f; --accent-wash: #40291b; --on-accent: #1f1007; --good: #8fd16a;
+}
+/* the fade over game art takes the palette's own colour instead of black */
+html:root[data-skin] .t-hero::before { background: linear-gradient(0deg, color-mix(in srgb, var(--page) 94%, transparent) 0%, color-mix(in srgb, var(--page) 45%, transparent) 55%, transparent 100%); }
+html:root[data-skin] .s-hero::before { background: linear-gradient(90deg, color-mix(in srgb, var(--page) 92%, transparent) 0%, color-mix(in srgb, var(--page) 60%, transparent) 45%, transparent 100%); }
+html:root[data-skin] .s-hero, html:root[data-skin] .t-hero { background-color: var(--surface); }
+/* the slideshow follows the palette's accent */
+html:root[data-skin] .show { --s-accent: var(--accent); }
+html:root[data-skin="steam"] .show { background: radial-gradient(1200px 700px at 15% 0%, #2a5378 0%, transparent 60%), radial-gradient(900px 600px at 100% 100%, #1f3550 0%, transparent 55%), #121c27; }
+html:root[data-skin="slate"] .show { background: radial-gradient(1200px 700px at 15% 0%, #2c3f5c 0%, transparent 60%), radial-gradient(900px 600px at 100% 100%, #2a2f3f 0%, transparent 55%), #171a20; }
+html:root[data-skin="forest"] .show { background: radial-gradient(1200px 700px at 15% 0%, #1d4a38 0%, transparent 60%), radial-gradient(900px 600px at 100% 100%, #17332a 0%, transparent 55%), #0e1814; }
+html:root[data-skin="ember"] .show { background: radial-gradient(1200px 700px at 15% 0%, #4a2a18 0%, transparent 60%), radial-gradient(900px 600px at 100% 100%, #33241c 0%, transparent 55%), #171311; }
+
+.skinpick { position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; z-index: 30; display: flex; gap: 4px; align-items: center; padding: 5px 6px 5px 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); font-size: 13px; }
+.skinpick span { color: var(--ink-2); margin-right: 4px; }
+.skinpick button { border: 0; border-radius: 999px; padding: 5px 12px; background: none; color: var(--ink-2); font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+.skinpick button i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid rgba(128, 128, 128, .4); }
+.skinpick button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.mockflag { position: fixed; right: 12px; bottom: 14px; z-index: 30; font-size: 11px; font-weight: 700; background: #e5a000; color: #111; padding: 3px 8px; border-radius: 6px; }
+@media (max-width: 760px) { .skinpick { left: 8px; right: 8px; transform: none; overflow-x: auto; } .skinpick span { display: none; } }
 </style>
 </head>
 <body>
@@ -495,8 +485,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
       <label for="day">Snapshot</label>
       <select id="day"></select>
       <span id="taken"></span>
-      <div class="palette"><button id="theme" aria-haspopup="true" aria-expanded="false" aria-controls="palMenu"></button>
-        <div class="pal-menu" id="palMenu" role="menu" aria-label="Colours" hidden></div></div>
+      <button id="theme" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
     </div>
   </header>
 
@@ -525,6 +514,29 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
   <div class="stage" id="yirStage"></div>
 </div>
 
+<div class="skinpick" role="group" aria-label="Palette (mockup only)"><span>Palette</span>
+  <button data-skin="black"><i style="background:#0e0e0f"></i>Black (now)</button>
+  <button data-skin="steam"><i style="background:#1b2838"></i>Steam</button>
+  <button data-skin="slate"><i style="background:#1f232b"></i>Slate</button>
+  <button data-skin="forest"><i style="background:#13211d"></i>Forest</button>
+  <button data-skin="ember"><i style="background:#1f1b18"></i>Ember</button>
+  <button data-skin="light"><i style="background:#f2f2f0"></i>Light</button>
+</div>
+<div class="mockflag">MOCKUP · INVENTED DATA</div>
+<script src="api-data.js"></script>
+<script>
+// mockup-only palette picker: dark palettes override the colour tokens; "Light" is today's light mode
+(function () {
+  const root = document.documentElement;
+  function setSkin(k) {
+    if (k === "light" || k === "black") delete root.dataset.skin; else root.dataset.skin = k;
+    root.dataset.theme = k === "light" ? "light" : "dark";
+    document.querySelectorAll(".skinpick button").forEach(b => b.setAttribute("aria-pressed", b.dataset.skin === k));
+  }
+  document.querySelectorAll(".skinpick button").forEach(b => b.onclick = () => setSkin(b.dataset.skin));
+  setSkin(new URLSearchParams(location.search).get("skin") || "steam");
+})();
+</script>
 <script>
 "use strict";
 const $ = (s, el = document) => el.querySelector(s);
@@ -546,6 +558,8 @@ function store(k, v) { try { v === undefined ? localStorage.removeItem(k) : loca
 function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
 async function api(path) {
+  // mockup: answers come from api-data.js instead of the server
+  if (window.API && path in window.API) return JSON.parse(JSON.stringify(window.API[path]));
   const r = await fetch(path, {cache: "no-store"});
   if (!r.ok) throw new Error(path + " -> HTTP " + r.status);
   return r.json();
@@ -574,66 +588,15 @@ const heroBg = appid => `url(${artUrl(appid, "library_hero.jpg")}), url(${artUrl
 const storeUrl = appid => `https://store.steampowered.com/app/${appid}/`;
 
 // ---------- theme and layout ----------
-// ---------- palette (colours) ----------
-// "auto" follows the system's light or dark mode; the others are fixed. Stored
-// per browser. The old light/dark choice (ssTheme) carries over.
-const PALETTES = [
-  ["auto", "Auto", null, null],
-  ["black", "Black", "#0e0e0f", "#3987e5"],
-  ["steam", "Steam", "#1b2838", "#66c0f4"],
-  ["slate", "Slate", "#1f232b", "#5b9df0"],
-  ["forest", "Forest", "#13211d", "#46c98d"],
-  ["ember", "Ember", "#1f1b18", "#f08a4f"],
-  ["light", "Light", "#f2f2f0", "#2a78d6"],
-];
-(function palette() {
-  const root = document.documentElement, btn = $("#theme"), menu = $("#palMenu");
-  const systemDark = () => matchMedia("(prefers-color-scheme: dark)").matches;
-  let current = new URLSearchParams(location.search).get("palette") || stored("ssPalette")
-    || ({light: "light", dark: "black"})[stored("ssTheme")] || "auto";
-  if (!PALETTES.some(p => p[0] === current)) current = "auto";
-  const swatch = k => {
-    const p = PALETTES.find(x => x[0] === k);
-    const [page, accent] = p[2] ? [p[2], p[3]] : (systemDark() ? ["#0e0e0f", "#3987e5"] : ["#f2f2f0", "#2a78d6"]);
-    return `<i class="sw" style="--sw-page:${page};--sw-accent:${accent}"></i>`;
+(function theme() {
+  const t = null;  // mockup: the palette picker sets the theme
+  $("#theme").onclick = () => {
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const cur = document.documentElement.dataset.theme || (dark ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    store("ssTheme", next);
   };
-  function apply(k) {
-    current = k;
-    delete root.dataset.skin;
-    if (k === "auto") delete root.dataset.theme;
-    else root.dataset.theme = k === "light" ? "light" : "dark";
-    if (!["auto", "black", "light"].includes(k)) root.dataset.skin = k;
-    const name = PALETTES.find(p => p[0] === k)[1];
-    btn.innerHTML = swatch(k);
-    btn.title = `Colours: ${name}`;
-    btn.setAttribute("aria-label", `Colours: ${name}`);
-    menu.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", b.dataset.palette === k));
-  }
-  menu.innerHTML = PALETTES.map(([k, name]) => `<button role="menuitemradio" data-palette="${k}">${swatch(k)}${name}</button>`).join("")
-    + `<div class="hint">Auto follows your system's light or dark mode.</div>`;
-  const close = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); };
-  btn.onclick = e => {
-    e.stopPropagation();
-    menu.hidden = !menu.hidden;
-    btn.setAttribute("aria-expanded", String(!menu.hidden));
-    if (!menu.hidden) menu.querySelector(`[data-palette="${current}"]`).focus();
-  };
-  menu.onclick = e => {
-    const b = e.target.closest("button[data-palette]");
-    if (!b) return;
-    apply(b.dataset.palette);
-    store("ssPalette", b.dataset.palette);
-    store("ssTheme");  // the old setting is replaced by this one
-    close(); btn.focus();
-  };
-  menu.onkeydown = e => {
-    const items = [...menu.querySelectorAll("button")], i = items.indexOf(document.activeElement);
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus(); }
-    else if (e.key === "Escape") { close(); btn.focus(); }
-  };
-  document.addEventListener("click", e => { if (!menu.hidden && !menu.contains(e.target)) close(); });
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => current === "auto" && apply("auto"));
-  apply(current);
 })();
 (function layout() {
   const want = new URLSearchParams(location.search).get("view") || stored("ssView");
@@ -1313,7 +1276,7 @@ function yirSlides(Y) {
     const big = cur.big, bigTop = big ? Object.entries(big.apps).sort((x, y) => y[1] - x[1])[0] : null;
     out.push(`<section class="slide"><div class="kicker">Consistency</div><h2>You played on ${cur.played} of ${cur.tracked} days</h2>
       ${calendar(cur, w)}
-      <div class="calkey">less <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> more
+      <div class="calkey">less <i style="background:rgba(255,255,255,.06)"></i><i style="background:#1d3f6b"></i><i style="background:#2a63a8"></i><i style="background:#3987e5"></i><i style="background:#9cc6f5"></i> more
         ${partial ? `<i style="background:repeating-linear-gradient(135deg,rgba(255,255,255,.2) 0 2px,transparent 2px 4px)"></i> not recorded` : ""}
         ${cur.best.len ? `<i style="outline:1.5px solid #fff;outline-offset:-1px"></i> longest streak` : ""}</div>
       <div class="pair" style="margin-top:18px">
