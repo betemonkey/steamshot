@@ -9,6 +9,7 @@ otherwise - your playtime stays on your machine.
   GET /api/snapshots?account=ID  stored days with headline numbers
   GET /api/snapshot?account=ID&date=YYYY-MM-DD   one snapshot (latest if no date)
   GET /api/history?account=ID    playtime gained per day
+  GET /api/art?account=ID        artwork URLs per app id
   GET /api/version               running version and update status
 """
 import json
@@ -106,6 +107,11 @@ class Data:
                               for g in p.get("games") or []]}
         return {**snap, "previous": prev}
 
+    def art(self, account):
+        cache = self._load(os.path.join(self.data_dir, account, "art.json")) or {}
+        return {a: {k: v for k, v in rec.items() if k != "t"}
+                for a, rec in cache.items() if isinstance(rec, dict) and len(rec) > 1}
+
     def history(self, account):
         hist = self._load(os.path.join(self.data_dir, account, "history.json")) or {}
         return {"since": hist.get("since"), "days": hist.get("days") or {}}
@@ -153,6 +159,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, snap) if snap else self.send(404, {"error": "no such snapshot"})
         if url.path == "/api/history":
             return self.send(200, self.data.history(account))
+        if url.path == "/api/art":
+            return self.send(200, self.data.art(account))
         self.send(404, {"error": "not found"})
 
     def version(self):

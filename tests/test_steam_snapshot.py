@@ -13,7 +13,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from steam_snapshot import __version__, config, demo, snapshot, steamfiles, transfer, update  # noqa: E402
+from steam_snapshot import __version__, config, demo, snapshot, steamfiles, store, transfer, update  # noqa: E402
 from steam_snapshot.server import make_server  # noqa: E402
 from tests import fixtures  # noqa: E402
 
@@ -284,6 +284,7 @@ class TransferTests(TempDir):
     def test_export_import_round_trip(self):
         src, dst = os.path.join(self.tmp, "a"), os.path.join(self.tmp, "b")
         demo.generate(src, days=10)
+        snapshot.write_json(os.path.join(self.acct(src), "art.json"), {"620": {"t": 1, "header": "https://x/h.jpg"}})
         out = transfer.export(src, os.path.join(self.tmp, "x.zip"))
         self.assertEqual(out["snapshots"], {demo.DEMO_ID: 10})
         res = transfer.import_file(dst, out["path"])
@@ -293,6 +294,7 @@ class TransferTests(TempDir):
         b = snapshot.read_json(os.path.join(self.acct(dst), "history.json"))
         self.assertEqual((a["since"], a["days"]), (b["since"], b["days"]))
         self.assertEqual(b["last"], {})  # never imported: the next run starts a fresh baseline
+        self.assertEqual(snapshot.read_json(os.path.join(self.acct(dst), "art.json"))["620"]["header"], "https://x/h.jpg")
         # importing the same file again adds nothing
         again = transfer.import_file(dst, out["path"])
         self.assertEqual((again[0]["days"], again[0]["snapshots"]), (0, 0))
@@ -352,6 +354,57 @@ class TransferTests(TempDir):
         self.assertTrue(snapshot.read_json(mine)["mine"])
 
 
+class ArtTests(TempDir):
+    ITEM = {"appid": 499170, "assets": {
+        "asset_url_format": "steam/apps/499170/${FILENAME}?t=1790865583",
+        "header": "deda420d9e42288f4734a068c707f4c156203969/header.jpg",
+        "library_capsule": "abc123/library_600x900.jpg", "main_capsule": "capsule_616x353.jpg"}}
+
+    def test_art_urls_from_store_item(self):
+        art = store.art_of(self.ITEM)
+        self.assertEqual(art["header"], "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/499170/"
+                                        "deda420d9e42288f4734a068c707f4c156203969/header.jpg?t=1790865583")
+        self.assertEqual(set(art), {"header", "library", "capsule"})
+
+    def test_art_rejects_anything_odd(self):
+        for fmt in ('steam/apps/1/${FILENAME}"><script>', "https://evil/${FILENAME}", "steam/apps/1/x.jpg"):
+            self.assertEqual(store.art_of({"assets": {"asset_url_format": fmt, "header": "h.jpg"}}), {})
+        odd = {"asset_url_format": "steam/apps/1/${FILENAME}",
+               "header": "../../x.jpg", "main_capsule": "a'b.jpg", "small_capsule": "ok/s.jpg"}
+        self.assertEqual(set(store.art_of({"assets": odd})), {"small"})
+        self.assertEqual(store.art_of(None), {})
+
+    def test_art_cache_refreshes_monthly(self):
+        calls = []
+
+        def fake(ids, country, language, release=False, assets=False):
+            calls.append(list(ids))
+            return {499170: self.ITEM}
+        real, store.get_items = store.get_items, fake
+        try:
+            online = {"country": "US", "language": "english"}
+            notes = []
+            snapshot.resolve_art([499170, 42], self.tmp, online, notes, now=1000)
+            cache = snapshot.read_json(os.path.join(self.tmp, "art.json"))
+            self.assertIn("header", cache["499170"])
+            self.assertEqual(cache["42"], {"t": 1000})  # no art: remembered, not asked again
+            snapshot.resolve_art([499170, 42], self.tmp, online, notes, now=1000 + 86400)
+            self.assertEqual(len(calls), 1)
+            snapshot.resolve_art([499170, 42, 7], self.tmp, online, notes, now=1000 + 86400)
+            self.assertEqual(calls[-1], ["7"])  # only the new one
+            snapshot.resolve_art([499170], self.tmp, online, notes, now=1000 + 31 * 86400)
+            self.assertEqual(calls[-1], ["499170"])
+
+            def down(*a, **k):
+                raise store.StoreError("offline")
+            store.get_items = down
+            snapshot.resolve_art([99], self.tmp, online, notes, now=1000)
+            self.assertIn("art lookup failed", notes[-1])
+            self.assertNotIn("99", snapshot.read_json(os.path.join(self.tmp, "art.json")))
+        finally:
+            store.get_items = real
+
+
 class ServerTests(TempDir):
     def test_endpoints_on_demo_data(self):
         demo.generate(self.tmp, days=10)
@@ -370,6 +423,10 @@ class ServerTests(TempDir):
             self.assertTrue(hist["days"])
             self.assertIn(b"Steam snapshot", get("/").read())
             self.assertEqual(json.load(get("/api/version"))["running"], __version__)
+            self.assertEqual(json.load(get(f"/api/art?account={demo.DEMO_ID}")), {})
+            snapshot.write_json(os.path.join(self.tmp, demo.DEMO_ID, "art.json"),
+                                {"620": {"t": 1, "header": "https://x/h.jpg"}, "7": {"t": 1}})
+            self.assertEqual(json.load(get(f"/api/art?account={demo.DEMO_ID}")), {"620": {"header": "https://x/h.jpg"}})
             for bad in ("/api/snapshot?account=../x", "/api/snapshot?account=1&date=../../etc"):
                 with self.assertRaises(urllib.error.HTTPError) as e:
                     get(bad)

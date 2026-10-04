@@ -8,6 +8,7 @@ Layout under the data folder (one sub-folder per Steam account):
                                      the same day replace it
   <steamid64>/history.json           playtime gained per day per game
   <steamid64>/names.json             names the store had to resolve (cache)
+  <steamid64>/art.json               where each game's artwork lives (cache)
 
 Steam keeps no session history at all - only a running total per game and one
 last-played date. The per-day series is built by diffing totals between runs,
@@ -16,6 +17,7 @@ so it starts the day the tool is first run and cannot be backfilled.
 import json
 import os
 import re
+import time
 from datetime import date, datetime, timedelta
 
 from . import __version__, steamfiles
@@ -24,6 +26,8 @@ SCHEMA = 1
 DATE_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.json$")
 LOG_NAME = "steam-snapshot.log"
 LOG_MAX_BYTES = 512 * 1024
+ART_REFRESH_DAYS = 30   # art paths change when a store page is updated
+ART_MAX_PER_RUN = 400   # a first run with a huge library catches up over a few runs
 
 
 class SnapshotError(Exception):
@@ -99,6 +103,29 @@ def resolve_names(games, acct_dir, online, notes):
     for g in games:
         if not g["name"]:
             g["name"] = cache.get(str(g["appid"])) or ""
+
+
+def resolve_art(appids, acct_dir, online, notes, now=None):
+    """Look up artwork URLs for games not looked up in the last
+    ART_REFRESH_DAYS; cached in art.json. A game Steam has no art for is
+    remembered too, so it isn't asked about again on every run."""
+    from . import store
+    now = time.time() if now is None else now
+    path = os.path.join(acct_dir, "art.json")
+    cache = read_json(path, {}) or {}
+    due = [a for a in dict.fromkeys(str(a) for a in appids)
+           if a not in cache or now - float((cache.get(a) or {}).get("t") or 0) > ART_REFRESH_DAYS * 86400]
+    if not due:
+        return
+    due = due[:ART_MAX_PER_RUN]
+    try:
+        items = store.get_items(due, online["country"], online["language"], assets=True)
+    except store.StoreError as e:
+        notes.append(f"art lookup failed: {e}")
+        return
+    for a in due:
+        cache[a] = {"t": int(now), **store.art_of(items.get(int(a)))}
+    write_json(path, cache)
 
 
 def build_wishlist(account, games, previous, online, notes):
@@ -215,6 +242,8 @@ def take(cfg, now=None):
         resolve_names(games, acct_dir, online, notes)
         if online["wishlist"]:
             wishlist, wl_status = build_wishlist(account, games, previous, online, notes)
+        resolve_art([g["appid"] for g in games] + [w["appid"] for w in wishlist],
+                    acct_dir, online, notes)
     for g in games:
         g["name"] = (g["name"] or f"App {g['appid']}").strip()
 

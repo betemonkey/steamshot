@@ -540,7 +540,7 @@ const sum = a => a.reduce((x, y) => x + y, 0);
 
 const state = {accounts: [], options: {images: true}, account: null, snaps: [], snap: null, hist: null,
                view: "shelf", range: 30, sort: {key: "minutes", dir: -1}, q: "", col: "", chip: "", installed: false,
-               hidden: false, limit: 50};
+               hidden: false, limit: 50, art: {}};
 
 function store(k, v) { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -554,11 +554,16 @@ async function api(path) {
 // ---------- art ----------
 const ART = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/";
 const OLD_ART = "https://cdn.cloudflare.steamstatic.com/steam/apps/";
-const artUrl = (appid, file) => ART + appid + "/" + file;
+// Steam keeps newer art under a per-image hash; the snapshot looks those paths up
+// (art.json, served as /api/art). The plain path is only the fallback.
+const ART_KIND = {"header.jpg": "header", "capsule_616x353.jpg": "capsule", "capsule_231x87.jpg": "small",
+                  "library_600x900.jpg": "library", "library_hero.jpg": "hero"};
+const artUrl = (appid, file) => ((state.art[appid] || {})[ART_KIND[file]]) || ART + appid + "/" + file;
 function img(appid, cls = "thumb") {
   if (!state.options.images) return "";
-  const a = `${OLD_ART}${appid}/capsule_231x87.jpg`;
-  const b = artUrl(appid, "capsule_231x87.jpg");
+  const known = (state.art[appid] || {}).small;
+  const a = known || `${OLD_ART}${appid}/capsule_231x87.jpg`;
+  const b = known ? `${OLD_ART}${appid}/capsule_231x87.jpg` : artUrl(appid, "capsule_231x87.jpg");
   return `<img class="${cls}" loading="lazy" alt="" src="${a}" data-alt="${b}" onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=''}else{this.style.visibility='hidden'}">`;
 }
 // cover art for a box that carries data-name: the first file, then the second,
@@ -689,7 +694,8 @@ async function boot() {
 
 async function loadAccount(id) {
   state.account = id;
-  [state.snaps, state.hist] = await Promise.all([api(`/api/snapshots?account=${id}`), api(`/api/history?account=${id}`)]);
+  [state.snaps, state.hist, state.art] = await Promise.all([api(`/api/snapshots?account=${id}`), api(`/api/history?account=${id}`),
+    api(`/api/art?account=${id}`).catch(() => ({}))]);  // art is optional: the plain paths still work for most games
   const day = $("#day");
   day.innerHTML = state.snaps.slice().reverse().map((s, i) =>
     `<option value="${s.date}">${fmtDay(s.date, {day: "numeric", month: "short", year: "numeric"})}${i === 0 ? " (latest)" : ""}</option>`).join("");

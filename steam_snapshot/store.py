@@ -1,14 +1,16 @@
 """Keyless lookups against Steam's public web endpoints.
 
-Used for three things the local files cannot answer: names for games missing
+Used for four things the local files cannot answer: names for games missing
 from Steam's local cache (new purchases, the whole wishlist), the wishlist
-itself, and release dates for wishlisted games. None of these need an API key
+itself, release dates for wishlisted games, and where each game's artwork
+lives on Steam's image server. None of these need an API key
 or a login. Every call is optional - with `[online] enabled = false` this
 module is never imported into a run's path and nothing leaves the machine.
 
 Only app ids and your public SteamID64 are ever sent.
 """
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -21,6 +23,12 @@ GET_WISHLIST = "https://api.steampowered.com/IWishlistService/GetWishlist/v1/"
 APPDETAILS = "https://store.steampowered.com/api/appdetails"
 USER_AGENT = f"steam-snapshot/{__version__}"
 BATCH = 50
+ART_BASE = "https://shared.akamai.steamstatic.com/store_item_assets/"
+# dashboard name -> GetItems asset key
+ART_KINDS = {"header": "header", "capsule": "main_capsule", "small": "small_capsule",
+             "library": "library_capsule", "hero": "library_hero"}
+ART_FORMAT_RE = re.compile(r"^steam/apps/\d+/\$\{FILENAME\}(\?t=\d+)?$")
+ART_FILE_RE = re.compile(r"^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*\.(jpg|png|webp)$")
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -38,7 +46,7 @@ def get_json(url, timeout=20):
         raise StoreError(f"{type(e).__name__}: {e}") from e
 
 
-def get_items(appids, country="US", language="english", release=False):
+def get_items(appids, country="US", language="english", release=False, assets=False):
     """{app id: store item} for a list of app ids, batched. Unknown or
     delisted ids are simply absent. Raises StoreError if Steam is unreachable."""
     ids = []
@@ -51,8 +59,9 @@ def get_items(appids, country="US", language="english", release=False):
     for i in range(0, len(ids), BATCH):
         req = {"ids": [{"appid": a} for a in ids[i:i + BATCH]],
                "context": {"language": language, "country_code": country}}
-        if release:
-            req["data_request"] = {"include_release": True}
+        if release or assets:
+            req["data_request"] = {k: True for k, on in (("include_release", release),
+                                                         ("include_assets", assets)) if on}
         q = urllib.parse.urlencode({"input_json": json.dumps(req)})
         data = get_json(f"{GET_ITEMS}?{q}")
         for it in ((data.get("response") or {}).get("store_items") or []):
@@ -62,6 +71,26 @@ def get_items(appids, country="US", language="english", release=False):
                 continue
             if appid:
                 out[appid] = it
+    return out
+
+
+def art_of(item):
+    """{kind: full URL} from a GetItems item fetched with assets=True.
+
+    Steam now files most artwork under a per-image hash
+    (steam/apps/<id>/<hash>/header.jpg), so the plain steam/apps/<id>/header.jpg
+    the dashboard used to build is a 404 for newer and recently updated games.
+    Everything is checked against a strict pattern: these URLs end up in the
+    dashboard's HTML."""
+    assets = (item or {}).get("assets") or {}
+    fmt = assets.get("asset_url_format")
+    if not isinstance(fmt, str) or not ART_FORMAT_RE.match(fmt):
+        return {}
+    out = {}
+    for kind, key in ART_KINDS.items():
+        name = assets.get(key)
+        if isinstance(name, str) and ART_FILE_RE.match(name):
+            out[kind] = ART_BASE + fmt.replace("${FILENAME}", name)
     return out
 
 

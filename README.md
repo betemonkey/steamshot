@@ -349,9 +349,9 @@ your network can then see your library, since the dashboard has no login.
 | | |
 |---|---|
 | **Read** (never written) | In the Steam folder: `userdata/<id>/config/localconfig.vdf`, `appcache/appinfo.vdf`, `appcache/packageinfo.vdf`, `steamapps/appmanifest_*.acf` (in every library folder), `userdata/<id>/config/cloudstorage/cloud-storage-namespace-1.json`, and the profile names from `config/loginusers.vdf`. Login names and saved-password flags in that file are not read. |
-| **Sent** (only with `[online] enabled = true`) | To Steam's public endpoints (`api.steampowered.com`, `store.steampowered.com`): app ids whose names Steam's local cache is missing, your wishlist's app ids, and your SteamID64 for the wishlist request. No key, no cookies, nothing else. To GitHub, unless `[updates] check = false`: a `git fetch` of this repo every 6 hours (or, for a copy that isn't a git checkout, one download of `steam_snapshot/__init__.py`). Nothing about your library. |
+| **Sent** (only with `[online] enabled = true`) | To Steam's public endpoints (`api.steampowered.com`, `store.steampowered.com`): app ids whose names Steam's local cache is missing, app ids to look up where each game's artwork lives (about once a month per game), your wishlist's app ids, and your SteamID64 for the wishlist request. No key, no cookies, nothing else. To GitHub, unless `[updates] check = false`: a `git fetch` of this repo every 6 hours (or, for a copy that isn't a git checkout, one download of `steam_snapshot/__init__.py`). Nothing about your library. |
 | **Loaded by the dashboard** | Cover art from Steam's image CDN, unless `images = false`. |
-| **Stored** | `data/<steamid64>/snapshots/*.json`, `history.json` and `names.json`, plus `data/steam-snapshot.log` and `data/update.json` (the last update check). Outside the data folder, only an update changes files: `git pull` in the project folder. |
+| **Stored** | `data/<steamid64>/snapshots/*.json`, `history.json` and `names.json`, plus `data/<steamid64>/art.json` (artwork addresses), `data/steam-snapshot.log` and `data/update.json` (the last update check). Outside the data folder, only an update changes files: `git pull` in the project folder. |
 
 `config.toml`, `data/` and `demo-data/` are in `.gitignore`, so your library never ends up
 in a commit.

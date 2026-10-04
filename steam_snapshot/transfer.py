@@ -6,6 +6,7 @@ An export is one zip:
   steamshot-export.json              what this is (tool, version, accounts)
   <steamid64>/history.json           playtime gained per day per game
   <steamid64>/names.json             cached store names, if any
+  <steamid64>/art.json               cached artwork URLs, if any
   <steamid64>/snapshots/YYYY-MM-DD.json
 
 `import` takes such a zip, or a bare history file in the same shape as
@@ -63,7 +64,7 @@ def export(data_dir, out_path, account=None):
         for acct in chosen:
             base = account_dir(data_dir, acct)
             n = 0
-            for name in ("history.json", "names.json"):
+            for name in ("history.json", "names.json", "art.json"):
                 if os.path.isfile(os.path.join(base, name)):
                     z.write(os.path.join(base, name), f"{acct}/{name}")
             snaps = os.path.join(base, "snapshots")
@@ -159,7 +160,7 @@ def _import_zip(data_dir, path, only=None):
             # accept exactly the layout export() writes; anything else (absolute
             # paths, "..", other files) is ignored, never written
             parts = info.filename.split("/")
-            ok = (len(parts) == 2 and parts[1] in ("history.json", "names.json")) or \
+            ok = (len(parts) == 2 and parts[1] in ("history.json", "names.json", "art.json")) or \
                  (len(parts) == 3 and parts[1] == "snapshots" and DATE_FILE.match(parts[2]))
             if not ok or not ACCOUNT_RE.match(parts[0]) or info.file_size > MAX_MEMBER:
                 continue
@@ -178,12 +179,14 @@ def _import_zip(data_dir, path, only=None):
         for acct, items in sorted(members.items()):
             base = account_dir(data_dir, acct)
             snaps = 0
-            history = names = None
+            history = names = art = None
             for parts, info in items:
                 if parts[1] == "history.json":
                     history = load(info)
                 elif parts[1] == "names.json":
                     names = load(info)
+                elif parts[1] == "art.json":
+                    art = load(info)
                 else:
                     target = os.path.join(base, "snapshots", parts[2])
                     doc = load(info)
@@ -194,9 +197,9 @@ def _import_zip(data_dir, path, only=None):
             added, since = (0, None)
             if history is not None:
                 added, since = _merge_into(data_dir, acct, clean_history(history))
-            if isinstance(names, dict):
-                npath = os.path.join(base, "names.json")
-                current = read_json(npath, {}) or {}
-                write_json(npath, {**names, **current})
+            for fname, doc in (("names.json", names), ("art.json", art)):
+                if isinstance(doc, dict):  # caches: what is already here wins
+                    cpath = os.path.join(base, fname)
+                    write_json(cpath, {**doc, **(read_json(cpath, {}) or {})})
             out[acct] = {"account": acct, "days": added, "snapshots": snaps, "since": since}
     return list(out.values())
