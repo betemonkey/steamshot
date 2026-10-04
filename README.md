@@ -308,11 +308,13 @@ the one you used last. Both show the same data.
 - **The game you're on:** the one with the most hours this month, on its own artwork,
   with its hours per day.
 - **Played lately:** cover art of the games with the most hours in the last 30 days.
-- **Playtime per day:** 30 or 90 days, with the games behind each bar on hover, next to
-  the headline numbers (last 30 days, total hours, games, never played, installed size).
-  Days before your first snapshot are shaded as "not recorded yet" rather than shown as zero.
-- **Changes:** what you played, bought or lost since the previous snapshot.
-- **Collections:** hours per Steam collection.
+- **Playtime:** a sentence first ("You played 44 hours in the last 30 days, 2 fewer than
+  the 30 days before. Mostly ..."), then hours per day for 30 or 90 days with the games
+  behind each bar on hover, then your library in one row (total hours, games, never
+  played, installed size). Days before your first snapshot are shaded as "not recorded
+  yet" rather than shown as zero.
+- **Collections and Changes**, as two tabs: hours per Steam collection, and what you
+  played, bought or lost since the previous snapshot.
 - **Wishlist:** unreleased games first, with a countdown for the ones that have a date.
 - **Library:** every game as a cover. Filter by installed, never played or collection;
   search; sort by hours, last played, name or size.

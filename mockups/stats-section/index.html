@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steamshot stats section</title>
+<style>
+/* Mockup: three takes on the "playtime per day / numbers / changes / collections" block.
+   Slate palette, invented numbers. */
+:root {
+  color-scheme: dark;
+  --page: #1f232b; --surface: #2a2f38; --surface-2: #353b46;
+  --ink: #eef0f3; --ink-2: #b9c0ca; --muted: #8a93a2;
+  --grid: #363c47; --axis: #454c58; --border: rgba(255, 255, 255, .09);
+  --accent: #5b9df0; --accent-wash: #27384f; --good: #4cc36b; --down: #e3a35a;
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 20px 80px; }
+.num { font-variant-numeric: tabular-nums; }
+.mock { position: fixed; right: 12px; bottom: 12px; z-index: 20; font-size: 11px; font-weight: 700; background: #e5a000; color: #111; padding: 3px 8px; border-radius: 6px; }
+.pick { position: sticky; top: 0; z-index: 10; background: var(--page); display: flex; gap: 8px; align-items: center; padding: 10px 0 14px; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+.pick b { margin-right: 8px; }
+.pick button { font: inherit; color: var(--ink-2); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; cursor: pointer; font-weight: 600; }
+.pick button[aria-pressed="true"] { background: var(--accent); color: #0b1420; border-color: transparent; }
+.pick .note { color: var(--muted); margin-left: auto; }
+.variant { display: none; }
+.variant.on { display: block; }
+
+.panel { background: var(--surface); border-radius: var(--radius); padding: 18px 20px; min-width: 0; }
+.h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.h h2 { margin: 0; font-size: 18px; letter-spacing: -.01em; }
+.sub { color: var(--ink-2); }
+.seg { display: inline-flex; gap: 4px; margin-left: auto; }
+.seg button { font: inherit; font-size: 12.5px; color: var(--ink); background: none; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; }
+.seg button.on { background: var(--accent-wash); border-color: transparent; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.up { color: var(--good); } .down { color: var(--down); }
+.bars .r { display: grid; grid-template-columns: minmax(120px, 38%) 1fr auto; gap: 12px; align-items: center; padding: 5px 0; }
+.bars .r span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars s { text-decoration: none; display: block; height: 8px; border-radius: 0 4px 4px 0; background: var(--accent); }
+.bars .v { color: var(--ink-2); font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
+.why { margin: 0 0 18px; color: var(--ink-2); max-width: 80ch; }
+.why b { color: var(--ink); }
+
+/* ===== A: a strip of numbers, then the chart full width ===== */
+.a-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 14px; }
+.a-strip .s { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; }
+.a-strip .s.main { background: var(--accent-wash); }
+.a-strip .l { color: var(--ink-2); font-size: 13px; }
+.a-strip .v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 2px; }
+.a-strip .d { font-size: 12.5px; color: var(--muted); }
+.a-first { display: flex; gap: 10px; align-items: center; color: var(--ink-2); background: var(--surface); border-radius: var(--radius); padding: 10px 16px; margin-top: 14px; }
+.a-first i { font-style: normal; color: var(--accent); }
+.a-cols { margin-top: 14px; }
+.a-cols .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+
+/* ===== B: the chart owns its number; library facts get their own card ===== */
+.b-row { display: grid; grid-template-columns: 2.1fr 1fr; gap: 14px; align-items: stretch; }
+.b-kpi { display: flex; align-items: baseline; gap: 12px; margin: 2px 0 10px; }
+.b-kpi b { font-size: 36px; letter-spacing: -.03em; }
+.b-facts { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr 1fr; gap: 12px; }
+.b-facts h2 { grid-column: 1 / -1; margin: 0; font-size: 18px; }
+.b-facts .f { background: var(--surface-2); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; }
+.b-facts .f span { color: var(--ink-2); font-size: 13px; }
+.b-facts .f b { font-size: 26px; letter-spacing: -.02em; }
+.b-facts .f small { color: var(--muted); font-size: 12px; }
+.b-row2 { display: grid; grid-template-columns: 2.1fr 1fr; gap: 14px; margin-top: 14px; align-items: start; }
+.b-changes .empty { display: flex; gap: 10px; align-items: flex-start; color: var(--ink-2); }
+.b-changes .empty i { font-style: normal; font-size: 18px; line-height: 1; color: var(--accent); }
+
+/* ===== C: a sentence on top, one panel with tabs underneath ===== */
+.c-lead { font-size: 26px; font-weight: 650; letter-spacing: -.015em; line-height: 1.25; margin: 0 0 4px; max-width: 34ch; }
+.c-lead em { font-style: normal; color: var(--accent); }
+.c-foot { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px; }
+.c-foot div + div { border-left: 1px solid var(--border); padding-left: 16px; }
+.c-foot span { display: block; color: var(--ink-2); font-size: 13px; }
+.c-foot b { font-size: 22px; letter-spacing: -.02em; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: -4px 0 14px; }
+.tabs button { font: inherit; background: none; border: 0; color: var(--ink-2); padding: 8px 12px; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; }
+.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .badge { font-size: 11px; background: var(--surface-2); border-radius: 999px; padding: 0 7px; margin-left: 6px; color: var(--muted); }
+.c-pane { display: none; } .c-pane.on { display: block; }
+.c-pane .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+
+@media (max-width: 860px) {
+  .a-strip { grid-template-columns: 1fr 1fr; } .a-strip .s.main { grid-column: 1 / -1; }
+  .a-cols .grid2, .c-pane .grid2 { grid-template-columns: 1fr; }
+  .b-row, .b-row2 { grid-template-columns: 1fr; }
+  .c-foot { grid-template-columns: 1fr 1fr; gap: 12px; } .c-foot div + div { border-left: 0; padding-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="mock">MOCKUP · INVENTED DATA</div>
+<div class="wrap">
+  <div class="pick" role="group" aria-label="Variant">
+    <b>Stats section</b>
+    <button data-v="a" aria-pressed="true">A. Number strip</button>
+    <button data-v="b">B. Chart + library card</button>
+    <button data-v="c">C. Sentence + tabs</button>
+    <span class="note" id="note"></span>
+  </div>
+
+  <!-- A -->
+  <div class="variant on" id="v-a">
+    <p class="why"><b>Numbers in one row above, chart full width.</b> Everything lines up, nothing leaves a hole. "Last 30 days" is highlighted because it's what the chart shows. Before the second snapshot, "Changes" shrinks to one line.</p>
+    <div class="a-strip">
+      <div class="s main"><div class="l">Last 30 days</div><div class="v num">44 h</div><div class="d"><span class="down">▼ 2 h</span> on the 30 before</div></div>
+      <div class="s"><div class="l">In total</div><div class="v num">2,410 h</div><div class="d">across 138 games</div></div>
+      <div class="s"><div class="l">Games</div><div class="v num">138</div><div class="d">3 added this month</div></div>
+      <div class="s"><div class="l">Never played</div><div class="v num">19</div><div class="d">14% of the library</div></div>
+      <div class="s"><div class="l">Installed</div><div class="v num">812 GB</div><div class="d">21 games on disk</div></div>
+    </div>
+    <div class="panel"><div class="h"><h2>Playtime per day</h2><span class="sub">44 h over 12 days played, last 30 days</span><span class="seg"><button class="on">30 days</button><button>90 days</button></span></div>
+      <div class="chart" data-h="220"></div></div>
+    <div class="a-first"><i>●</i> Changes since the last snapshot will show here from the next one (it runs every 30 minutes).</div>
+    <div class="panel a-cols"><div class="h"><h2>Collections</h2><span class="sub">hours per Steam collection</span></div><div class="grid2 bars" data-cols="10"></div></div>
+  </div>
+
+  <!-- B -->
+  <div class="variant" id="v-b">
+    <p class="why"><b>The chart owns its number; library facts get their own card at the same height.</b> Two clear groups: "how much I played" on the left, "what my library looks like" on the right. Changes moves next to Collections as a narrow side card with a small empty state.</p>
+    <div class="b-row">
+      <div class="panel"><div class="h"><h2>Playtime per day</h2><span class="seg"><button class="on">30 days</button><button>90 days</button></span></div>
+        <div class="b-kpi"><b class="num">44 h</b><span class="sub">over 12 days played, last 30 days <span class="down">▼ 2 h</span> on the 30 before</span></div>
+        <div class="chart" data-h="210" data-w="760"></div></div>
+      <div class="panel b-facts"><h2>Library</h2>
+        <div class="f"><span>In total</span><b class="num">2,410 h</b><small>across 138 games</small></div>
+        <div class="f"><span>Games</span><b class="num">138</b><small>3 added this month</small></div>
+        <div class="f"><span>Never played</span><b class="num">19</b><small>14% of the library</small></div>
+        <div class="f"><span>Installed</span><b class="num">812 GB</b><small>21 games on disk</small></div>
+      </div>
+    </div>
+    <div class="b-row2">
+      <div class="panel"><div class="h"><h2>Collections</h2><span class="sub">hours per Steam collection</span></div><div class="bars" data-cols="7"></div></div>
+      <div class="panel b-changes"><div class="h"><h2>Changes</h2></div>
+        <div class="empty"><i>↻</i><div>Nothing to compare yet. The next snapshot shows what you played, bought or removed since this one.</div></div></div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="variant" id="v-c">
+    <p class="why"><b>Say it in words, then show it.</b> The chart panel opens with a sentence and closes with the library facts as a quiet row. Collections and Changes share one panel with tabs, so an empty Changes never takes up space.</p>
+    <div class="panel">
+      <div class="h" style="margin-bottom:6px"><span class="seg"><button class="on">30 days</button><button>90 days</button></span></div>
+      <p class="c-lead">You played <em>44 hours</em> in the last 30 days, 2 fewer than the month before.</p>
+      <p class="sub" style="margin:0 0 12px">12 days played. Mostly Onimusha and Database Detective.</p>
+      <div class="chart" data-h="200"></div>
+      <div class="c-foot">
+        <div><span>In total</span><b class="num">2,410 h</b></div>
+        <div><span>Games</span><b class="num">138</b></div>
+        <div><span>Never played</span><b class="num">19</b></div>
+        <div><span>Installed</span><b class="num">812 GB</b></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="tabs" role="tablist"><button class="on" data-pane="cols">Collections</button><button data-pane="chg">Changes<span class="badge">next snapshot</span></button></div>
+      <div class="c-pane on" id="pane-cols"><div class="grid2 bars" data-cols="10"></div></div>
+      <div class="c-pane" id="pane-chg"><p class="sub">Nothing to compare yet. The next snapshot shows what you played, bought or removed since this one.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// invented, but shaped like a real month: busy start, gaps, a quiet last week
+const DAYS = [0, 6.5, 7.8, 5.9, 0, 0, 3.0, 1.5, 0.2, 0, 3.6, 3.2, 0, 5.1, 0.2, 0, 0, 6.8, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, 0];
+const START = Date.UTC(2026, 8, 5), DAY = 864e5;
+const COLS = [["Fighting games", 1137, 14], ["Multiplayer / shooters / arena", 896, 12], ["Co-op & party", 484, 26], ["Action RPG / souls-like", 305, 8],
+  ["Metroidvania / action-platformer", 246, 14], ["Racing", 180, 5], ["Strategy", 122, 9], ["Puzzle", 64, 7], ["Rhythm & sports", 51, 6], ["Roguelite / deckbuilder", 47, 5]];
+const fmtD = t => new Date(t).toLocaleDateString(undefined, {day: "numeric", month: "short", timeZone: "UTC"});
+
+document.querySelectorAll(".chart").forEach(el => {
+  const W = +(el.dataset.w || 1100), H = +el.dataset.h, L = 30, B = 22, T = 6, top = 8;
+  const y = h => T + (H - T - B) * (1 - h / top), slot = (W - L) / DAYS.length, bw = Math.min(26, slot - 4);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hours per day">`;
+  for (let v = 0; v <= top; v += 2) s += `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="${v ? "var(--grid)" : "var(--axis)"}"/><text class="tick" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}h</text>`;
+  DAYS.forEach((h, i) => {
+    const x = L + i * slot + (slot - bw) / 2;
+    if (h) { const y1 = y(h), r = Math.min(4, H - B - y1); s += `<path fill="var(--accent)" d="M${x},${H - B} V${y1 + r} q0,-${r} ${r},-${r} H${x + bw - r} q${r},0 ${r},${r} V${H - B} Z"><title>${fmtD(START + i * DAY)}: ${h} h</title></path>`; }
+    if ((DAYS.length - 1 - i) % 7 === 0) s += `<text class="tick" x="${L + i * slot + slot / 2}" y="${H - 5}" text-anchor="middle">${fmtD(START + i * DAY)}</text>`;
+  });
+  el.innerHTML = s + "</svg>";
+});
+document.querySelectorAll(".bars[data-cols]").forEach(el => {
+  const rows = COLS.slice(0, +el.dataset.cols), max = rows[0][1];
+  el.innerHTML = rows.map(([n, h, g]) => `<div class="r"><span>${n}</span><s style="width:${h / max * 100}%"></s><span class="v">${h.toLocaleString()} h · ${g}</span></div>`).join("");
+});
+const NOTES = {a: "Numbers in a row, chart full width", b: "Two groups: playtime and library", c: "A sentence, then tabs"};
+document.querySelectorAll(".pick button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".pick button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  document.querySelectorAll(".variant").forEach(v => v.classList.toggle("on", v.id === "v-" + b.dataset.v));
+  document.getElementById("note").textContent = NOTES[b.dataset.v];
+});
+document.getElementById("note").textContent = NOTES.a;
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".c-pane").forEach(p => p.classList.toggle("on", p.id === "pane-" + b.dataset.pane));
+});
+const want = new URLSearchParams(location.search).get("v");
+if (want) document.querySelector(`.pick button[data-v="${want}"]`).click();
+</script>
+</body>
+</html>

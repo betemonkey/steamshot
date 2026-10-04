@@ -169,13 +169,23 @@ details.table-view table { margin-top: 6px; }
 .cv .nm { margin-top: 8px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cv .mt { color: var(--ink-2); font-size: 13px; }
 .cv .mt b { color: var(--ink); }
-.s-split { display: grid; grid-template-columns: 2.2fr 1fr; gap: 28px; align-items: start; }
-.figs { display: grid; gap: 16px; padding-top: 6px; }
-.fig .v { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
-.fig .l { color: var(--ink-2); }
-.fig .d { color: var(--muted); font-size: 12.5px; }
-.fig .d.up { color: var(--good); }
-.s-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.s-play .top { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+.s-lead { font-size: 26px; font-weight: 650; letter-spacing: -.015em; line-height: 1.25; margin: 0 0 4px; max-width: 34ch; }
+.s-lead em { font-style: normal; color: var(--accent); }
+.s-lead-sub { color: var(--ink-2); margin: 0 0 12px; }
+.s-facts { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px; }
+.s-facts div + div { border-left: 1px solid var(--border); padding-left: 16px; }
+.s-facts span { display: block; color: var(--ink-2); font-size: 13px; }
+.s-facts b { font-size: 22px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.s-facts small { display: block; color: var(--muted); font-size: 12px; }
+.s-facts small.up { color: var(--good); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: -4px 0 14px; }
+.tabs button { background: none; border: 0; border-radius: 0; color: var(--ink-2); padding: 8px 12px; border-bottom: 2px solid transparent; font-weight: 600; }
+.tabs button:hover { background: none; color: var(--ink); }
+.tabs button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .badge { font-size: 11px; background: var(--surface-2); border-radius: 999px; padding: 0 7px; margin-left: 6px; color: var(--muted); font-weight: 600; }
+.tabpane .bars { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
+.tabpane .changes { max-width: 760px; }
 .wish { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .wi { min-width: 0; }
 .wi .art { display: block; aspect-ratio: 460 / 215; border-radius: 10px; background: var(--surface-2); overflow: hidden; }
@@ -460,8 +470,9 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 @media (max-width: 900px) {
   .s-hero { grid-template-columns: 1fr; }
   .s-hero .spark { display: none; }
-  .s-split, .s-pair { grid-template-columns: 1fr; }
-  .figs { grid-template-columns: repeat(2, 1fr); }
+  .s-facts { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .s-facts div + div { border-left: 0; padding-left: 0; }
+  .tabpane .bars { grid-template-columns: 1fr; }
   .wish { grid-template-columns: repeat(2, 1fr); }
   .bento { grid-template-columns: 1fr 1fr; grid-template-areas: "hero hero" "hero hero" "m30 streak" "weeks weeks" "next backlog" "disk cols" "changes changes" "chart chart"; }
 }
@@ -807,7 +818,14 @@ function render() {
   document.querySelectorAll("[data-range]").forEach(b => b.onclick = () => { state.range = +b.dataset.range; render(); });
   drawChart(histWindow(snap.date, state.range), f.names);
   if (state.view === "tiles") { drawWeeks(); wireTable(); renderRows(); }
-  else { drawSpark(f); wireCovers(); renderCovers(); }
+  else {
+    drawSpark(f); wireCovers(); renderCovers();
+    document.querySelectorAll(".tabs [data-tab]").forEach(b => b.onclick = () => {
+      state.shelfTab = b.dataset.tab;
+      document.querySelectorAll(".tabs [data-tab]").forEach(x => x.setAttribute("aria-selected", x === b));
+      document.querySelectorAll(".tabpane").forEach(p => p.hidden = p.dataset.pane !== b.dataset.tab);
+    });
+  }
 
   $("#foot").innerHTML = $("#foot").innerHTML.split("<br>")[0];
   const notes = [];
@@ -843,19 +861,24 @@ function shelfView(f) {
     ${f.recent.length ? `<div class="shelf">${f.recent.slice(0, 12).map(g => cover(g, `<b class="num">${fmtH(g.m30)} h</b> this month`)).join("")}</div>`
       : `<p class="empty">Nothing recorded in the last 30 days yet. Playtime is tracked between snapshots, so it fills in as the scheduled job runs.</p>`}</section>`);
   const games = f.games.length, nv = f.never.length;
-  const fig = (v, l, d, up) => `<div class="fig"><div class="v num">${v}</div><div class="l">${l}</div>${d ? `<div class="d${up ? " up" : ""}">${d}</div>` : ""}</div>`;
-  out.push(`<section class="s-split">
-    <div><div class="h"><h2>Playtime per day</h2><span class="sub" id="chart-sub"></span><span class="tools">${rangeButtons()}</span></div>${chartBlock()}</div>
-    <div class="figs">
-      ${fig(fmtH(f.m30) + " h", "last 30 days", delta30(f))}
-      ${fig(fmtH(f.totalMin) + " h", "in total", deltaTotal(f), f.prevMin !== null && f.totalMin > f.prevMin)}
-      ${fig(games.toLocaleString(), "games", f.prevGames ? signed(games - f.prevGames.length, "since " + fmtDay(f.snap.previous.date)) : "")}
-      ${fig(nv.toLocaleString(), "never played", games ? Math.round(nv / games * 100) + "% of the library" : "")}
-      ${fig(fmtBytes(f.diskBytes) || "0 GB", "installed", `${f.inst.length} games on disk`)}
+  // playtime in words, then the chart, then the library facts as one quiet row
+  const fact = (l, v, d, up) => `<div><span>${l}</span><b>${v}</b>${d ? `<small${up ? ' class="up"' : ""}>${d}</small>` : ""}</div>`;
+  out.push(`<section class="panel s-play"><div class="top">${rangeButtons()}</div>${playLead(f, state.range)}
+    ${chartBlock()}<span id="chart-sub" hidden></span>
+    <div class="s-facts">
+      ${fact("In total", fmtH(f.totalMin) + " h", deltaTotal(f), f.prevMin !== null && f.totalMin > f.prevMin)}
+      ${fact("Games", games.toLocaleString(), f.prevGames ? signed(games - f.prevGames.length, "since " + fmtDay(f.snap.previous.date)) : "")}
+      ${fact("Never played", nv.toLocaleString(), games ? Math.round(nv / games * 100) + "% of the library" : "")}
+      ${fact("Installed", fmtBytes(f.diskBytes) || "0 GB", `${f.inst.length} games on disk`)}
     </div></section>`);
-  out.push(`<section class="s-pair">
-    <div class="panel changes"><div class="h"><h2>Changes</h2><span class="sub">${changesSub(f.snap)}</span></div>${changes(f.games, f.prevGames)}</div>
-    <div class="panel"><div class="h"><h2>Collections</h2><span class="sub">hours per Steam collection</span></div>${collections(f.games)}</div>
+  // collections and changes share a panel, so an empty "changes" takes no room
+  const nChanges = changeCount(f.games, f.prevGames);
+  const tab = state.shelfTab === "changes" ? "changes" : "cols";
+  out.push(`<section class="panel"><div class="tabs" role="tablist">
+      <button role="tab" data-tab="cols" aria-selected="${tab === "cols"}">Collections</button>
+      <button role="tab" data-tab="changes" aria-selected="${tab === "changes"}">Changes<span class="badge">${nChanges === null ? "next snapshot" : nChanges}</span></button></div>
+    <div class="tabpane" data-pane="cols"${tab === "cols" ? "" : " hidden"}>${collections(f.games)}</div>
+    <div class="tabpane changes" data-pane="changes"${tab === "changes" ? "" : " hidden"}><p class="sub" style="margin:0 0 10px">${esc(changesSub(f.snap))}</p>${changes(f.games, f.prevGames)}</div>
   </section>`);
   if (f.snap.wishlistStatus && f.snap.wishlistStatus !== "off") out.push(wishlist(f.snap));
   out.push(`<section><div class="h"><h2>Library</h2><span class="sub" id="lib-count"></span></div>
@@ -867,6 +890,32 @@ function shelfView(f) {
     </div>
     <div class="chips" id="chips"></div><div class="covergrid" id="covers"></div><div class="more" id="lib-more"></div></section>`);
   return out.join("");
+}
+function playLead(f, days) {
+  const win = histWindow(f.snap.date, days), before = histWindow(isoOf(toUTC(f.snap.date) - days * DAY), days);
+  const mins = sum(win.map(d => d.mins)), prev = sum(before.map(d => d.mins));
+  const played = win.filter(d => d.mins).length, per = {};
+  win.forEach(d => Object.entries(d.apps).forEach(([a, m]) => per[a] = (per[a] || 0) + m));
+  const top = Object.entries(per).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([a]) => esc(f.names[a] || "App " + a));
+  const partial = state.hist.since && state.hist.since > win[0].iso;
+  let lead;
+  if (!mins) lead = `Nothing played in the last ${days} days${partial ? ` (recording since ${esc(fmtDay(state.hist.since))})` : ""}.`;
+  else {
+    lead = `You played <em>${fmtH(mins)} hours</em> in the last ${days} days`;
+    if (partial) lead += `, since recording started on ${esc(fmtDay(state.hist.since))}.`;
+    else if (!before.every(d => d.tracked)) lead += ".";
+    else {
+      const d = Math.round((mins - prev) / 60);
+      lead += d > 0 ? `, ${d} more than the ${days} days before.` : d < 0 ? `, ${-d} fewer than the ${days} days before.` : `, about the same as the ${days} days before.`;
+    }
+  }
+  const sub = mins ? `${played} ${played === 1 ? "day" : "days"} played. Mostly ${top.join(" and ")}.` : "Playtime fills in as the scheduled snapshots run.";
+  return `<p class="s-lead">${lead}</p><p class="s-lead-sub">${sub}</p>`;
+}
+function changeCount(games, prevGames) {
+  if (!prevGames) return null;
+  const before = Object.fromEntries(prevGames.map(g => [g.appid, g])), now = new Set(games.map(g => g.appid));
+  return games.filter(g => !before[g.appid] || g.minutes > before[g.appid].minutes).length + prevGames.filter(g => !now.has(g.appid)).length;
 }
 function cover(g, line) {
   return `<div class="cv">${artBox(g.appid, g.name, "library_600x900.jpg", "header.jpg")}<div class="nm" title="${esc(g.name)}">${esc(g.name)}</div><div class="mt">${line}</div></div>`;
