@@ -150,18 +150,19 @@ details.table-view table { margin-top: 6px; }
 .s-hero h2 { margin: 4px 0 6px; font-size: clamp(28px, 4vw, 44px); line-height: 1.05; letter-spacing: -.02em; }
 .s-hero .facts { color: rgba(255,255,255,.88); font-size: 15px; }
 .s-hero .facts b { color: #fff; }
-.s-hero .side { padding: 24px 30px; }
-/* the game's month in three numbers, on a plate so they read on any artwork */
-.s-hero .plate { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 14px 18px; border-radius: 12px;
-  background: rgba(10, 12, 16, .26); border: 1px solid rgba(255, 255, 255, .12);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
+.s-hero .side:empty { display: none; }
+/* the game's month in three numbers, on a strip along the bottom of the right half
+   that fades out towards the middle, so the art stays visible above it */
+.s-hero .side { position: absolute; right: 0; bottom: 0; width: 50%; padding: 18px 30px 22px 80px;
+  background: linear-gradient(90deg, transparent 0%, rgba(8, 10, 14, .45) 30%, rgba(8, 10, 14, .7) 100%); }
+.s-hero .plate { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 .s-hero .plate b { display: block; font-size: 24px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.s-hero .plate span { color: rgba(255, 255, 255, .8); font-size: 13px; }
-@media (prefers-reduced-transparency: reduce) { .s-hero .plate { backdrop-filter: none; background: rgba(10, 12, 16, .85); } }
+.s-hero .plate span { color: rgba(255, 255, 255, .82); font-size: 13px; }
 .s-hero.plain { background: var(--accent-wash); color: var(--ink); min-height: 220px; }
 .s-hero.plain::before { display: none; }
 .s-hero.plain .lbl, .s-hero.plain .facts, .s-hero.plain .plate span { color: var(--ink-2); }
-.s-hero.plain .plate { background: var(--surface); }
+.s-hero.plain .side { background: none; }
+.s-hero.plain .plate { text-shadow: none; }
 .s-hero.plain .facts b { color: var(--ink); }
 
 .shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 14px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
@@ -474,7 +475,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 @media (max-width: 900px) {
   .s-hero { grid-template-columns: 1fr; }
-  .s-hero .side { padding-top: 0; }
+  .s-hero .side { position: static; width: auto; padding: 0 30px 24px; background: none; }
   .s-facts { grid-template-columns: 1fr 1fr; gap: 12px; }
   .s-facts div + div { border-left: 0; padding-left: 0; }
   .tabpane .bars { grid-template-columns: 1fr; }

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steamshot banner numbers</title>
+<style>
+/* Mockup: styles for the three numbers on the Shelf banner. Slate palette, invented numbers,
+   bright artwork on purpose (the hardest case for readability). */
+:root { color-scheme: dark; --page: #1f232b; --surface: #2a2f38; --ink: #eef0f3; --ink-2: #b9c0ca; --accent: #5b9df0; --radius: 14px; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 20px 60px; }
+.mock { position: fixed; right: 12px; bottom: 12px; font-size: 11px; font-weight: 700; background: #e5a000; color: #111; padding: 3px 8px; border-radius: 6px; }
+.grid { display: grid; grid-template-columns: 1fr; gap: 30px; }
+h2.v { font-size: 15px; margin: 0 0 2px; }
+p.why { color: var(--ink-2); margin: 0 0 10px; font-size: 13px; min-height: 2.9em; }
+
+.hero { position: relative; border-radius: var(--radius); overflow: hidden; height: 250px; color: #fff;
+  background: #111 center/cover url(https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1551360/library_hero.jpg); }
+.hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--page) 92%, transparent) 0%, color-mix(in srgb, var(--page) 55%, transparent) 40%, transparent 70%); }
+.hero > * { position: absolute; }
+.hero .copy { left: 22px; bottom: 20px; }
+.hero .copy small { color: rgba(255,255,255,.78); font-size: 12px; }
+.hero .copy b { display: block; font-size: 28px; letter-spacing: -.02em; line-height: 1.1; }
+.nums { right: 18px; bottom: 18px; display: grid; grid-template-columns: repeat(3, auto); gap: 22px; }
+.nums b { display: block; font-size: 22px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.nums span { font-size: 12px; color: rgba(255,255,255,.85); }
+
+/* 1 the original: dark glass */
+.v1 .nums { padding: 12px 16px; border-radius: 12px; background: rgba(10,12,16,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+/* 2 now: light glass */
+.v2 .nums { padding: 12px 16px; border-radius: 12px; background: rgba(10,12,16,.26); border: 1px solid rgba(255,255,255,.12); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+/* 3 no plate: the banner's own shadow fades up from the bottom; dividers between numbers */
+.v3::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 55%; background: linear-gradient(0deg, rgba(8,10,14,.7), transparent); }
+.v3 .copy, .v3 .nums { z-index: 1; }
+.v3 .nums { gap: 0; }
+.v3 .nums div { padding: 0 18px; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.v3 .nums div + div { border-left: 1px solid rgba(255,255,255,.3); }
+/* 4 tinted with the palette's colour */
+.v4 .nums { padding: 12px 16px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 22%, rgba(10,12,16,.35)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+/* 5 three small chips */
+.v5 .nums { gap: 8px; }
+.v5 .nums div { padding: 8px 12px; border-radius: 10px; background: rgba(12,14,18,.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.v5 .nums b { font-size: 19px; }
+/* 6 a strip along the bottom edge, full width */
+.v6 .nums { left: 0; right: 0; bottom: 0; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 10px 18px 10px 0; justify-items: end;
+  background: linear-gradient(90deg, transparent 35%, rgba(8,10,14,.62) 60%); }
+.v6 .nums div { text-align: right; padding-left: 18px; }
+.v6 .copy { bottom: 64px; }
+/* 7 light frosted glass (white) */
+.v7 .nums { padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+/* 8 on the left, under the title: numbers join the text, nothing on the art */
+.v8 .nums { display: none; }
+.v8 .copy .inline { display: flex; gap: 20px; margin-top: 10px; }
+.v8 .copy .inline b { font-size: 18px; display: inline; }
+.v8 .copy .inline span { font-size: 12px; color: rgba(255,255,255,.8); margin-left: 5px; }
+.v8 .copy .inline div + div { border-left: 1px solid rgba(255,255,255,.25); padding-left: 20px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="mock">MOCKUP · INVENTED DATA</div>
+<div class="wrap"><div class="grid" id="grid"></div></div>
+<script>
+const V = [
+  ["1. Dark glass (the original)", "What you had first: a dark see-through panel. Very readable, a bit heavy."],
+  ["2. Light glass (now, 1.5.1)", "Half as dark, thin light edge, soft text shadow."],
+  ["3. No panel", "The banner's own shadow rises from the bottom; thin lines between the numbers. Nothing sits on the art."],
+  ["4. Tinted glass", "Light glass in the palette's colour (blue here, orange in Ember, green in Forest)."],
+  ["5. Three chips", "Each number in its own small dark chip: lighter footprint than one big panel."],
+  ["6. Bottom strip", "A band along the bottom edge, fading in from the left, like a TV caption."],
+  ["7. Frosted white glass", "A pale frosted panel, more like a phone widget. Brighter, still blurred."],
+  ["8. Under the title", "The numbers move under the game's name on the left, so the art stays clean."],
+];
+const nums = `<div class="nums"><div><b>4</b><span>days played this month</span></div><div><b>7.8 h</b><span>best day, Sep 7</span></div><div><b>52%</b><span>of your playtime</span></div></div>`;
+document.getElementById("grid").innerHTML = V.map(([t, w], i) => `<div><h2 class="v">${t}</h2><p class="why">${w}</p>
+  <div class="hero v${i + 1}"><div class="copy"><small>Most played this month</small><b>Forza Horizon 5</b>
+  ${i === 7 ? `<div class="inline"><div><b>4</b><span>days played</span></div><div><b>7.8 h</b><span>best day</span></div><div><b>52%</b><span>of playtime</span></div></div>` : ""}</div>${nums}</div></div>`).join("");
+</script>
+</body>
+</html>
