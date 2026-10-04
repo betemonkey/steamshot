@@ -1314,13 +1314,12 @@ function yirStats(start, end) {
   const ranking = Object.entries(per).sort((a, b) => b[1] - a[1]).map(([a]) => a);
   return {start, end, days, per, perDays, months, total, played, tracked, big, best, ranking, n: days.length};
 }
-// How much of a window history really covers. It starts at the first snapshot
-// (Steam keeps only a running total per game), and play on a day without a
-// snapshot is counted on the next snapshot's day.
+// How much of a window history really covers: it starts at the first snapshot
+// (Steam keeps only a running total per game). The number of snapshot files is
+// no guide to the rest - imported history comes without them.
 function yirCoverage(st) {
   const since = state.hist.since, from = since > st.start ? since : st.start;
-  return {since, from, partial: since > st.start, tracked: st.tracked, n: st.n,
-          snapDays: state.snaps.filter(s => s.date >= from && s.date <= st.end).length};
+  return {since, from, partial: since > st.start, tracked: st.tracked, n: st.n};
 }
 const fullDate = iso => fmtDay(iso, {day: "numeric", month: "long", year: "numeric"});
 // start..end as a strip with from..to filled in. mid labels where the filled part
@@ -1339,7 +1338,6 @@ function yirWarning(cov, w) {
     + covBar(w.start, w.end, cov.from, w.end, [fmtDay(w.start), fmtDay(w.end)], fmtDay(cov.since));
   const more = [];
   if (cov.tracked < 30) more.push("With this few days recorded, most slides will look thin.");
-  if (cov.tracked >= 7 && cov.snapDays < cov.tracked / 2) more.push(`Snapshots ran on only ${cov.snapDays} of those days. Play on a day without one is counted on the next snapshot's day, so streaks and daily figures are rough.`);
   if (more.length) html += `<p>${more.join(" ")}</p>`;
   return html;
 }
