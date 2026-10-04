@@ -1327,7 +1327,6 @@ function yirWarning(cov, w) {
   if (more.length) html += `<p>${more.join(" ")}</p>`;
   return html;
 }
-const localIso = t => { const d = new Date(t * 1000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 function yirCompareOk(year) {
   const w = yirWindow(year);
   return yirStats(shiftYear(w.start, -1), shiftYear(w.end, -1)).tracked > 0;
@@ -1359,13 +1358,7 @@ function yirBuild(year, compare) {
   };
   const hasCols = (snap.games || []).some(g => g.collections && g.collections.length);
   const cov = yirCoverage(cur);
-  // played in the window but only before history began: Steam's last-played date says so, the hours are unknown
-  const earlier = !cov.partial ? [] : visibleGames(snap).filter(g => {
-    if (!g.lastPlayed || cur.per[g.appid]) return false;
-    const d = localIso(g.lastPlayed);
-    return d >= w.start && d < cov.since;
-  });
-  return {year, w, cur, prev, name, fresh, comeback, lib, unplayed, byId, cov, earlier,
+  return {year, w, cur, prev, name, fresh, comeback, lib, unplayed, byId, cov,
           cols: hasCols ? {cur: colShare(cur), prev: prev ? colShare(prev) : null} : null,
           persona: (snap.account || {}).persona || ""};
 }
@@ -1395,8 +1388,7 @@ function yirSlides(Y) {
   out.push(`<section class="slide"><div class="kicker">Time played</div><h2>${partial ? `Since ${longDate(since)}, you played for` : "You played for"}</h2>
     <div class="hero">${fmtH(cur.total)}<small>hours</small></div>
     <div class="vs">${prev ? `${upDown(cur.total, prev.total, hrs)}${prev.total ? ` (${cur.total >= prev.total ? "+" : "-"}${pct(Math.abs(cur.total - prev.total), prev.total)}%)` : ""} on ${py}'s ${hrs(prev.total)}. ` : ""}That's about ${Math.floor(perDay / 60) ? Math.floor(perDay / 60) + " h " : ""}${Math.round(perDay % 60)} min a day${partial ? ` over ${cov.tracked} days` : ""}.</div>
-    ${Y.earlier.length ? `<div class="vs">Before that, you also played <b>${Y.earlier.length} other ${Y.earlier.length === 1 ? "game" : "games"}</b> this year: ${esc(Y.earlier.slice().sort((a, b) => b.lastPlayed - a.lastPlayed).slice(0, 3).map(g => g.name).join(", "))}${Y.earlier.length > 3 ? ` and ${Y.earlier.length - 3} more` : ""}.</div>` : ""}
-    ${partial ? `<div class="fine">Your first snapshot was on ${longDate(since)}. Steam only stores each game's total and the last day it was played, so hours from before then can't be counted${Y.earlier.length ? ", and games last played earlier this year come without hours" : ""}.</div>` : ""}</section>`);
+    ${partial ? `<div class="fine">Your first snapshot was on ${longDate(since)}. Steam only stores each game's total and the last day it was played, so hours from before then can't be counted.</div>` : ""}</section>`);
 
   // month by month
   const lastM = +w.end.slice(5, 7);
@@ -1492,7 +1484,7 @@ function yirSlides(Y) {
                ["New to you", Y.fresh.length, ""],
                ["Top month", tm, cur.total ? `<em style="color:var(--s-ink-2)">${hrs(months[topM])}</em>` : ""]];
   out.push(`<section class="slide"><div class="card-sum">
-      <div class="hd"><b>${esc(Y.persona ? Y.persona + "'s " : "")}${year}</b><span>${whole ? "All year" : fmtDay(w.start) + " to " + fmtDay(w.end)}${prev ? `, vs ${py}` : ""}</span></div>
+      <div class="hd"><b>${esc(Y.persona ? Y.persona + "'s " : "")}${year}</b><span>${whole && !partial ? "All year" : fmtDay(cov.from) + " to " + fmtDay(w.end)}${prev ? `, vs ${py}` : ""}</span></div>
       <div class="g">${Y.summary.map(([l, v, e]) => `<div><span>${l}</span><b>${v}</b>${e}</div>`).join("")}</div>
       ${state.options.images && top.length ? `<div class="tops">${top.map(a => `<div style="background-image:url(${artUrl(a, "capsule_231x87.jpg")}),url(${artUrl(a, "header.jpg")})"></div>`).join("")}</div>` : ""}
     </div>
@@ -1589,7 +1581,7 @@ function yirGo(n) {
   slides.forEach((s, i) => s.classList.toggle("on", i === yir.cur));
   bars.forEach((b, i) => { b.className = i < yir.cur ? "done" : ""; });
   void bars[yir.cur].offsetWidth;
-  bars[yir.cur].className = yir.cur === slides.length - 1 || yir.paused ? (yir.cur === slides.length - 1 ? "done" : "") : "now";
+  bars[yir.cur].className = yir.cur === slides.length - 1 || yir.paused ? "done" : "now";
   clearTimeout(yir.timer);
   if (!yir.paused && yir.cur < slides.length - 1) yir.timer = setTimeout(() => yirGo(yir.cur + 1), SLIDE_MS);
 }
@@ -1632,7 +1624,7 @@ function yirSaveImage(Y) {
   g.fillStyle = "#ffffff"; g.font = font("bold 54px"); g.fillText(`${Y.persona ? Y.persona + "'s " : ""}${Y.year} on Steam`, 70, 120);
   g.fillStyle = "#c3c2b7"; g.font = font("26px");
   const whole = Y.w.end.endsWith("12-31");
-  g.fillText(`${whole ? "All year" : fmtDay(Y.w.start) + " to " + fmtDay(Y.w.end)}${Y.prev ? ", compared with " + (Y.year - 1) : ""}`, 70, 165);
+  g.fillText(`${whole && !Y.cov.partial ? "All year" : fmtDay(Y.cov.from) + " to " + fmtDay(Y.w.end)}${Y.prev ? ", compared with " + (Y.year - 1) : ""}`, 70, 165);
   Y.summary.forEach(([label, value], i) => {
     const x = 70 + (i % 3) * 360, y = 270 + Math.floor(i / 3) * 150;
     g.fillStyle = "#c3c2b7"; g.font = font("24px"); g.fillText(label, x, y);
@@ -1683,7 +1675,7 @@ function watchVersion(loaded) {
   async function check() {
     let v;
     try { v = await api("/api/version"); } catch (e) { return; }  // restarting, or stopped
-    if (v.running !== loaded) { location.reload(); return; }
+    if (v.running !== loaded) { if ($("#show").hidden) location.reload(); return; }  // not mid-slideshow: after it closes
     if (v.available) {
       const how = v.auto && v.status !== "manual" ? "It will install itself shortly."
         : `${v.reason ? esc(v.reason[0].toUpperCase() + v.reason.slice(1)) + ", so it" : "It"} can't install itself.
