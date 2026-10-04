@@ -153,9 +153,9 @@ details.table-view table { margin-top: 6px; }
 .s-hero .side:empty { display: none; }
 /* the game's month in three numbers, on a strip along the bottom of the right half
    that fades out towards the middle, so the art stays visible above it */
-.s-hero .side { position: absolute; right: 0; bottom: 0; width: 50%; padding: 18px 30px 22px 80px;
+.s-hero .side { position: absolute; right: 0; bottom: 0; width: 50%; padding: 18px 30px 28px 80px;
   background: linear-gradient(90deg, transparent 0%, rgba(8, 10, 14, .45) 30%, rgba(8, 10, 14, .7) 100%); }
-.s-hero .plate { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
+.s-hero .plate { display: grid; grid-template-columns: repeat(3, auto); justify-content: end; gap: 34px; text-align: right; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 .s-hero .plate b { display: block; font-size: 24px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .s-hero .plate span { color: rgba(255, 255, 255, .82); font-size: 13px; }
 .s-hero.plain { background: var(--accent-wash); color: var(--ink); min-height: 220px; }
