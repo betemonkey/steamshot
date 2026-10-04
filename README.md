@@ -306,7 +306,8 @@ the one you used last. Both show the same data.
 
 **Shelf** puts the cover art first:
 - **The game you're on:** the one with the most hours this month, on its own artwork,
-  with its hours per day.
+  with how many days you played it, its best day, and your streak with it (or its share
+  of your playtime).
 - **Played lately:** cover art of the games with the most hours in the last 30 days.
 - **Playtime:** a sentence first ("You played 44 hours in the last 30 days, 2 fewer than
   the 30 days before. Mostly ..."), then hours per day for 30 or 90 days with the games

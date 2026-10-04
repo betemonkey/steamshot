@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Steamshot banner options</title>
+<style>
+/* Mockup: three takes on the right side of the Shelf banner. Slate palette, invented numbers. */
+:root { color-scheme: dark; --page: #1f232b; --surface: #2a2f38; --ink: #eef0f3; --ink-2: #b9c0ca; --muted: #8a93a2; --accent: #5b9df0; --radius: 14px; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 20px 60px; }
+.mock { position: fixed; right: 12px; bottom: 12px; font-size: 11px; font-weight: 700; background: #e5a000; color: #111; padding: 3px 8px; border-radius: 6px; }
+h2.v { font-size: 16px; margin: 30px 0 4px; } h2.v:first-of-type { margin-top: 0; }
+p.why { color: var(--ink-2); margin: 0 0 12px; max-width: 80ch; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* the banner as it is in the app */
+.s-hero { position: relative; border-radius: var(--radius); overflow: hidden; min-height: 300px; background: #111 center/cover no-repeat;
+  display: grid; grid-template-columns: 1.2fr 1fr; align-items: end; color: #fff;
+  background-image: url(https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1551360/library_hero.jpg); }
+.s-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--page) 92%, transparent) 0%, color-mix(in srgb, var(--page) 60%, transparent) 45%, transparent 100%); }
+.s-hero > * { position: relative; }
+.s-hero .copy { padding: 28px 30px; }
+.s-hero .lbl { color: rgba(255,255,255,.78); font-size: 13px; }
+.s-hero h1 { margin: 4px 0 6px; font-size: 44px; line-height: 1.05; letter-spacing: -.02em; }
+.s-hero .facts { color: rgba(255,255,255,.88); font-size: 15px; }
+.s-hero .facts b { color: #fff; }
+.side { padding: 24px 30px; }
+/* the readable chart sits on a dark plate so it holds up on any artwork */
+.plate { background: rgba(10, 12, 16, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 12px; padding: 12px 14px 8px; }
+.plate .cap { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: rgba(255,255,255,.85); margin-bottom: 6px; }
+.plate .cap b { color: #fff; }
+.plate svg { display: block; width: 100%; height: 62px; overflow: visible; }
+.plate .ends { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.65); margin-top: 3px; }
+.plate .t { fill: rgba(255,255,255,.65); font-size: 10px; }
+/* facts instead of a chart */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 14px 18px; }
+.stats b { display: block; font-size: 24px; letter-spacing: -.02em; }
+.stats span { color: rgba(255,255,255,.8); font-size: 13px; }
+@media (prefers-reduced-transparency: reduce) { .plate { backdrop-filter: none; background: rgba(10, 12, 16, .85); } }
+@media (max-width: 860px) { .s-hero { grid-template-columns: 1fr; } .stats { justify-content: start; } }
+</style>
+</head>
+<body>
+<div class="mock">MOCKUP · INVENTED DATA</div>
+<div class="wrap">
+  <h2 class="v">A. Remove it</h2>
+  <p class="why">The text says what matters; the right side is just the artwork. The per-day chart further down already shows the days.</p>
+  <div class="s-hero"><div class="copy"><div class="lbl">Most played this month</div><h1>Forza Horizon 5</h1>
+    <div class="facts"><b class="num">23 h</b> in the last 30 days, <b class="num">81 h</b> in total. Last played today.</div></div><div></div></div>
+
+  <h2 class="v">B. Keep the chart, make it readable</h2>
+  <p class="why">A small plate under the bars so they hold up on any artwork, the game's name in the caption, a baseline, dates at both ends, and the best day labelled.</p>
+  <div class="s-hero"><div class="copy"><div class="lbl">Most played this month</div><h1>Forza Horizon 5</h1>
+    <div class="facts"><b class="num">23 h</b> in the last 30 days, <b class="num">81 h</b> in total. Last played today.</div></div>
+    <div class="side"><div class="plate"><div class="cap"><span>Forza Horizon 5, hours per day</span><span>best day <b class="num">7.8 h</b></span></div>
+      <svg id="spark" viewBox="0 0 300 62" preserveAspectRatio="none" role="img" aria-label="Forza Horizon 5, hours per day, last 30 days"></svg>
+      <div class="ends"><span>Sep 5</span><span>Oct 4</span></div></div></div></div>
+
+  <h2 class="v">C. Replace it with facts</h2>
+  <p class="why">Three plain numbers in the same style as the Tiles view: no reading required.</p>
+  <div class="s-hero"><div class="copy"><div class="lbl">Most played this month</div><h1>Forza Horizon 5</h1>
+    <div class="facts"><b class="num">23 h</b> in the last 30 days, <b class="num">81 h</b> in total. Last played today.</div></div>
+    <div class="side"><div class="plate stats">
+      <div><b class="num">4</b><span>days played this month</span></div>
+      <div><b class="num">7.8 h</b><span>best day, Sep 7</span></div>
+      <div><b class="num">2 days</b><span>in a row right now</span></div>
+    </div></div></div>
+</div>
+<script>
+const V = [0, 6.5, 7.8, 5.9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2.6];
+const W = 300, H = 62, B = 1, max = Math.max(...V), bw = W / V.length, best = V.indexOf(max);
+let s = `<line x1="0" x2="${W}" y1="${H - B}" y2="${H - B}" stroke="rgba(255,255,255,.35)"/>`;
+V.forEach((v, i) => { if (v) { const h = v / max * (H - B - 12); s += `<rect x="${i * bw + 1}" y="${H - B - h}" width="${bw - 2}" height="${h}" rx="2" fill="${i === best ? "#fff" : "rgba(255,255,255,.7)"}"/>`; } });
+document.getElementById("spark").innerHTML = s;
+</script>
+</body>
+</html>

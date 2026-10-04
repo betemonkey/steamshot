@@ -150,14 +150,18 @@ details.table-view table { margin-top: 6px; }
 .s-hero h2 { margin: 4px 0 6px; font-size: clamp(28px, 4vw, 44px); line-height: 1.05; letter-spacing: -.02em; }
 .s-hero .facts { color: rgba(255,255,255,.88); font-size: 15px; }
 .s-hero .facts b { color: #fff; }
-.s-hero .spark { padding: 24px 30px; }
-.s-hero .spark svg { width: 100%; height: 70px; display: block; }
-.s-hero .spark .cap { font-size: 12px; color: rgba(255,255,255,.72); margin-top: 4px; }
+.s-hero .side { padding: 24px 30px; }
+/* the game's month in three numbers, on a plate so they read on any artwork */
+.s-hero .plate { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 14px 18px; border-radius: 12px;
+  background: rgba(10, 12, 16, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.s-hero .plate b { display: block; font-size: 24px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.s-hero .plate span { color: rgba(255, 255, 255, .8); font-size: 13px; }
+@media (prefers-reduced-transparency: reduce) { .s-hero .plate { backdrop-filter: none; background: rgba(10, 12, 16, .85); } }
 .s-hero.plain { background: var(--accent-wash); color: var(--ink); min-height: 220px; }
 .s-hero.plain::before { display: none; }
-.s-hero.plain .lbl, .s-hero.plain .facts, .s-hero.plain .spark .cap { color: var(--ink-2); }
+.s-hero.plain .lbl, .s-hero.plain .facts, .s-hero.plain .plate span { color: var(--ink-2); }
+.s-hero.plain .plate { background: var(--surface); }
 .s-hero.plain .facts b { color: var(--ink); }
-.s-hero.plain .spark rect { fill: var(--accent); }
 
 .shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 14px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; }
 .cv { scroll-snap-align: start; min-width: 0; }
@@ -469,7 +473,7 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 @media (max-width: 900px) {
   .s-hero { grid-template-columns: 1fr; }
-  .s-hero .spark { display: none; }
+  .s-hero .side { padding-top: 0; }
   .s-facts { grid-template-columns: 1fr 1fr; gap: 12px; }
   .s-facts div + div { border-left: 0; padding-left: 0; }
   .tabpane .bars { grid-template-columns: 1fr; }
@@ -819,7 +823,7 @@ function render() {
   drawChart(histWindow(snap.date, state.range), f.names);
   if (state.view === "tiles") { drawWeeks(); wireTable(); renderRows(); }
   else {
-    drawSpark(f); wireCovers(); renderCovers();
+    wireCovers(); renderCovers();
     document.querySelectorAll(".tabs [data-tab]").forEach(b => b.onclick = () => {
       state.shelfTab = b.dataset.tab;
       document.querySelectorAll(".tabs [data-tab]").forEach(x => x.setAttribute("aria-selected", x === b));
@@ -854,7 +858,7 @@ function shelfView(f) {
     out.push(`<div class="s-hero${plain ? " plain" : ""}"${plain ? "" : ` style="background-image:${heroBg(f.lead.appid)}"`}>
       <div class="copy"><div class="lbl">${f.leadWhy}</div><h2><a class="plain" href="${storeUrl(f.lead.appid)}" target="_blank" rel="noopener">${esc(f.lead.name)}</a></h2>
         <div class="facts">${f.lead.m30 ? `<b class="num">${fmtH(f.lead.m30)} h</b> in the last 30 days, ` : ""}<b class="num">${fmtH(f.lead.minutes || 0)} h</b> in total.${f.lead.lastPlayed ? " Last played " + ago(f.lead.lastPlayed, f.snap.date) + "." : ""}</div></div>
-      <div class="spark"><svg id="spark" preserveAspectRatio="none" aria-label="Hours per day of ${esc(f.lead.name)}, last 30 days"></svg><div class="cap">Hours per day, last 30 days</div></div>
+      <div class="side">${leadStats(f)}</div>
     </div>`);
   }
   out.push(`<section><div class="h"><h2>Played lately</h2><span class="sub">last 30 days, most hours first</span></div>
@@ -924,12 +928,19 @@ function ago(t, todayIso) {
   const d = Math.floor((toUTC(todayIso) + DAY - t * 1000) / DAY);
   return d <= 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
 }
-function drawSpark(f) {
-  const el = $("#spark");
-  if (!el || !f.lead) return;
-  const vals = f.last30.map(d => d.apps[f.lead.appid] || 0), max = Math.max(...vals, 1), W = 300, H = 70, bw = W / vals.length;
-  el.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  el.innerHTML = vals.map((v, i) => v ? `<rect x="${i * bw + 1}" y="${H - v / max * H}" width="${Math.max(1, bw - 2)}" height="${v / max * H}" rx="2" fill="rgba(255,255,255,.85)"><title>${esc(fmtDay(f.last30[i].iso))}: ${fmtH(v)} h</title></rect>` : "").join("");
+function leadStats(f) {
+  // the banner game's last 30 days: days played, best day, and a streak (or its share)
+  const days = f.last30, id = f.lead.appid;
+  if (!f.lead.m30) return "";
+  const played = days.filter(d => d.apps[id]).length;
+  const best = days.reduce((a, d) => (d.apps[id] || 0) > (a.apps[id] || 0) ? d : a, days[0]);
+  let run = 0;
+  for (let i = days.length - 1; i >= 0 && days[i].apps[id]; i--) run++;
+  if (!run && days.length > 1) for (let i = days.length - 2; i >= 0 && days[i].apps[id]; i--) run++;  // yesterday still counts
+  const third = run >= 2 ? `<div><b>${run} days</b><span>in a row right now</span></div>`
+    : `<div><b>${Math.round(f.lead.m30 / Math.max(1, f.m30) * 100)}%</b><span>of your playtime</span></div>`;
+  return `<div class="plate"><div><b>${played}</b><span>${played === 1 ? "day" : "days"} played this month</span></div>
+    <div><b>${fmtH(best.apps[id])} h</b><span>best day, ${esc(fmtDay(best.iso))}</span></div>${third}</div>`;
 }
 const CHIPS = {
   "": ["All", () => true],
