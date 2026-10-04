@@ -158,15 +158,18 @@ python -m steam_snapshot serve --open
 The dashboard runs while that terminal is open. Start it again whenever you want to look.
 The snapshots keep being taken in the background either way.
 
-**Desktop shortcut (Windows):** to open the dashboard from the desktop with the Steamshot icon,
-run this in PowerShell from the project folder:
+**Desktop shortcut (Windows):** to start the dashboard with a double-click instead, create
+a Steamshot icon on the desktop:
 
 ```powershell
-"[InternetShortcut]`r`nURL=http://127.0.0.1:8765/`r`nIconFile=$PWD\assets\steamshot.ico`r`nIconIndex=0" |
-  Set-Content "$([Environment]::GetFolderPath('Desktop'))\Steamshot.url" -Encoding ascii
+py -3 -m steam_snapshot shortcut
 ```
 
-The shortcut only opens the page, so the dashboard has to be running.
+The icon runs `open`: if the dashboard isn't running yet it starts it in the background,
+with no window, then opens the page; if it is already running (from a terminal or an
+earlier click) it just opens the page. The background dashboard keeps running until you
+sign out, and restarts itself on new code like the terminal one. An older
+`Steamshot.url` icon from earlier versions only opened the page and can be deleted.
 
 ### Updating
 
@@ -322,6 +325,8 @@ to see the same message on screen.
 python -m steam_snapshot serve          # http://127.0.0.1:8765
 python -m steam_snapshot serve --open   # and open it in your browser
 python -m steam_snapshot serve --port 9000
+python -m steam_snapshot open           # start it in the background if needed, then open it
+python -m steam_snapshot shortcut       # Windows: a desktop icon that runs `open`
 ```
 
 The page has two layouts, switched with **Shelf | Tiles** in the header. It remembers

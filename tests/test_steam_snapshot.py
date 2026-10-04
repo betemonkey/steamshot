@@ -638,5 +638,62 @@ class HardeningTests(TempDir):
             os.environ["PATH"] = path
 
 
+
+class OpenTests(TempDir):
+    """`open` (what the desktop shortcut runs) starts the dashboard only when
+    it isn't already running, then opens the page."""
+
+    def cfg(self, port):
+        return {"dashboard": {"host": "127.0.0.1", "port": port, "images": False},
+                "data_dir": self.tmp, "_file": None}
+
+    def patch(self, name, value):
+        old = getattr(cli, name)
+        setattr(cli, name, value)
+        self.addCleanup(setattr, cli, name, old)
+
+    def test_detects_its_own_dashboard_only(self):
+        httpd = make_server(self.tmp, "127.0.0.1", 0, {"images": False})
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        self.addCleanup(httpd.server_close)
+        self.addCleanup(httpd.shutdown)
+        self.assertTrue(cli.dashboard_running(f"http://127.0.0.1:{httpd.server_address[1]}/"))
+        self.assertFalse(cli.dashboard_running("http://127.0.0.1:9/"))  # nothing listens there
+
+    def test_already_running_just_opens_the_page(self):
+        started, opened = [], []
+        self.patch("dashboard_running", lambda url, timeout=1.5: True)
+        self.patch("start_dashboard", lambda cfg: started.append(cfg))
+        self.patch("webbrowser", type("W", (), {"open": staticmethod(opened.append)}))
+        self.assertEqual(cli.cmd_open(self.cfg(8765), None), 0)
+        self.assertEqual(started, [])
+        self.assertEqual(opened, ["http://127.0.0.1:8765/"])
+
+    def test_not_running_starts_it_and_waits(self):
+        started, opened, answers = [], [], iter([False, False, True])
+        self.patch("dashboard_running", lambda url, timeout=1.5: next(answers))
+        self.patch("start_dashboard", lambda cfg: started.append(cfg))
+        self.patch("webbrowser", type("W", (), {"open": staticmethod(opened.append)}))
+        self.assertEqual(cli.cmd_open(self.cfg(8765), None), 0)
+        self.assertEqual(len(started), 1)
+        self.assertEqual(opened, ["http://127.0.0.1:8765/"])
+
+    def test_gives_up_and_says_so(self):
+        opened = []
+        self.patch("dashboard_running", lambda url, timeout=1.5: False)
+        self.patch("start_dashboard", lambda cfg: None)
+        self.patch("webbrowser", type("W", (), {"open": staticmethod(opened.append)}))
+        self.assertEqual(cli.cmd_open(self.cfg(8765), None, wait=0.5), 1)
+        self.assertEqual(opened, [])
+
+    def test_shortcut_script_quotes_every_value(self):
+        evil = "C:\\it's\\x'; Remove-Item C:\\ -Recurse; '"
+        script = cli.shortcut_script(evil, "-m steam_snapshot open", evil, evil + "\\a.ico")
+        for line in script.splitlines():
+            if evil in line:
+                self.assertIn(cli.ps_quote(evil)[:-1], line)
+        self.assertNotIn("x'; Remove", script)
+
+
 if __name__ == "__main__":
     unittest.main()

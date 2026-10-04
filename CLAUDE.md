@@ -12,13 +12,15 @@ py -3 -m steam_snapshot demo --no-serve --data-dir <dir>  # just generate demo d
 py -3 -m steam_snapshot doctor                            # read-only diagnostics against the real Steam install
 py -3 -m steam_snapshot snapshot                          # real snapshot -> data/ (writes files, may call Steam store API)
 py -3 -m steam_snapshot serve --open [--port N] [--data-dir D]
+py -3 -m steam_snapshot open                              # start serve hidden (pythonw, detached) unless it answers, then open the page
+py -3 -m steam_snapshot shortcut                          # Windows: writes Desktop\Steamshot.lnk (via PowerShell) that runs `open`
 py -3 -m steam_snapshot schedule [--every 30]             # PRINTS a Task Scheduler / cron command; installs nothing
 ```
 There's no linter or formatter config. The code has `# noqa: E402/E731` markers, so keep it flake8-clean in that style.
 
 ## Architecture
 
-- `cli.py`: argparse subcommands (`snapshot serve doctor schedule demo init export import`). Each `cmd_*` takes `(cfg, args)`. Exit codes: 1 = runtime failure, 2 = config error.
+- `cli.py`: argparse subcommands (`snapshot serve open shortcut doctor schedule demo init export import`). `open` checks `/api/version` for a `Server: steam-snapshot/` header (proxy-free opener) before starting a second server. Each `cmd_*` takes `(cfg, args)`. Exit codes: 1 = runtime failure, 2 = config error.
 - `config.py`: merges TOML over `DEFAULTS`. `PROJECT_DIR` is the repo root. Adds `cfg["data_dir"]` (absolute) and `cfg["_file"]`.
 - `steamfiles.py`: every Steam parser: text VDF (`localconfig.vdf`, `loginusers.vdf`, `.acf`), binary VDF (`appinfo.vdf` v28/v29, `packageinfo.vdf`), and the collections JSON in cloudstorage. `read_library()` combines them into `(games, sources)`.
 - `store.py`: keyless Steam web endpoints (`IStoreBrowseService/GetItems`, `IWishlistService/GetWishlist`, `appdetails`) via urllib. Raises `StoreError`. `art_of()` turns GetItems `include_assets` into artwork URLs: Steam files newer art under a per-image hash, so the plain `steam/apps/<id>/header.jpg` is a 404 for many games. URLs are pattern-checked because they go into the page's HTML.

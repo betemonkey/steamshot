@@ -1,4 +1,4 @@
-"""Command line: snapshot, serve, doctor, schedule, demo, init, export, import."""
+"""Command line: snapshot, serve, open, shortcut, doctor, schedule, demo, init, export, import."""
 import argparse
 import os
 import shlex
@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import urllib.request
 import webbrowser
 import time
 from datetime import datetime
@@ -218,6 +219,85 @@ def ps_quote(s):
     return "'" + str(s).replace("'", "''") + "'"
 
 
+def dashboard_url(cfg):
+    dash = cfg["dashboard"]
+    host = dash["host"]
+    return f"http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{dash['port']}/"
+
+
+def dashboard_running(url, timeout=1.5):
+    """True if this tool's dashboard answers at url (local only: never the network)."""
+    # its own opener: a proxy set in Windows' settings must not see 127.0.0.1
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(url + "api/version", timeout=timeout) as r:
+            return r.headers.get("Server", "").startswith("steam-snapshot/")
+    except (OSError, ValueError):
+        return False
+
+
+def start_dashboard(cfg):
+    """`serve` in the background, with no window and detached from this process."""
+    argv = [pythonw(), "-m", "steam_snapshot"] + (["--config", cfg["_file"]] if cfg["_file"] else []) + ["serve"]
+    quiet = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+    if sys.platform == "win32":
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        return subprocess.Popen(argv, cwd=config.PROJECT_DIR, creationflags=flags, **quiet)
+    return subprocess.Popen(argv, cwd=config.PROJECT_DIR, start_new_session=True, **quiet)
+
+
+def cmd_open(cfg, args, wait=15.0):
+    """What the desktop shortcut runs: start the dashboard unless it already
+    runs (in a terminal or from an earlier click), then open it."""
+    url = dashboard_url(cfg)
+    if not dashboard_running(url):
+        start_dashboard(cfg)
+        deadline = time.time() + wait
+        while not dashboard_running(url):
+            if time.time() > deadline:
+                snapshot.log_line(cfg["data_dir"], f"open: the dashboard did not start on {url}")
+                print(f"the dashboard did not start on {url}; try `serve` to see why", file=sys.stderr)
+                return 1
+            time.sleep(0.3)
+    webbrowser.open(url)
+    return 0
+
+
+def shortcut_script(target, arguments, workdir, icon, name="Steamshot"):
+    """PowerShell that writes <Desktop>\<name>.lnk. Every value is a quoted
+    literal (ps_quote), so a folder name can never become a command."""
+    return "\n".join([
+        "$desk = [Environment]::GetFolderPath('Desktop')",
+        f"$lnk = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $desk {ps_quote(name + '.lnk')}))",
+        f"$lnk.TargetPath = {ps_quote(target)}",
+        f"$lnk.Arguments = {ps_quote(arguments)}",
+        f"$lnk.WorkingDirectory = {ps_quote(workdir)}",
+        f"$lnk.IconLocation = {ps_quote(icon + ',0')}",
+        "$lnk.Description = 'Open the Steamshot dashboard'",
+        "$lnk.Save()",
+        "Write-Output $lnk.FullName",
+    ])
+
+
+def cmd_shortcut(cfg, args):
+    """A desktop icon that runs `open`: Windows only."""
+    if sys.platform != "win32":
+        print("the desktop shortcut is Windows only; elsewhere run `python -m steam_snapshot open`")
+        return 1
+    conf = cfg["_file"]
+    arguments = "-m steam_snapshot" + (f' --config "{conf}"' if conf else "") + " open"
+    icon = os.path.join(config.PROJECT_DIR, "assets", "steamshot.ico")
+    script = shortcut_script(pythonw(), arguments, config.PROJECT_DIR, icon)
+    r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                       capture_output=True, text=True)
+    if r.returncode:
+        print("could not create the shortcut: " + (r.stderr.strip() or "powershell failed"), file=sys.stderr)
+        return 1
+    print(f"created {r.stdout.strip()}: double-click it to start the dashboard and open it")
+    print("an older Steamshot.url shortcut (it only opened the page) can be deleted")
+    return 0
+
+
 def cmd_schedule(cfg, args):
     every = args.every
     if every < 5 or (every >= 60 and every % 60) or (every < 60 and 60 % every):
@@ -351,6 +431,8 @@ def main(argv=None):
     s.add_argument("--port", type=int)
     s.add_argument("--data-dir", help="serve a different data folder")
     s.add_argument("--open", action="store_true", help="open it in the browser")
+    sub.add_parser("open", help="start the dashboard in the background if needed, then open it")
+    sub.add_parser("shortcut", help="Windows: put a desktop icon that runs `open`")
     sub.add_parser("doctor", help="show what the tool can see; changes nothing")
     s = sub.add_parser("schedule", help="print the command that schedules snapshots")
     s.add_argument("--every", type=int, default=30, help="minutes between runs (default 30)")
@@ -373,6 +455,6 @@ def main(argv=None):
     except config.ConfigError as e:
         print(f"config error: {e}", file=sys.stderr)
         return 2
-    return {"snapshot": cmd_snapshot, "serve": cmd_serve, "doctor": cmd_doctor,
+    return {"snapshot": cmd_snapshot, "serve": cmd_serve, "open": cmd_open, "shortcut": cmd_shortcut, "doctor": cmd_doctor,
             "schedule": cmd_schedule, "demo": cmd_demo, "init": cmd_init,
             "export": cmd_export, "import": cmd_import}[args.cmd](cfg, args)
