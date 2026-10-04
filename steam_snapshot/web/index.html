@@ -351,7 +351,7 @@ body { position: relative; }
 @media (prefers-reduced-transparency: reduce) { .bgwall { display: none; } }
 
 /* ===== Year in review ===== */
-.yir-btn { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+.yir-btn { background: var(--accent); color: #000; border-color: transparent; font-weight: 600; }
 .yir-btn:hover { background: var(--accent); filter: brightness(1.08); }
 dialog.yir-dlg { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--ink); padding: 20px; width: min(430px, 92vw); }
 dialog.yir-dlg::backdrop { background: rgba(0, 0, 0, .5); }
@@ -786,7 +786,7 @@ function facts() {
   // the game to lead with: most hours this month, else the one played last
   let lead = recent[0], leadWhy = "Most played this month";
   if (!lead) {
-    lead = [...games].filter(g => g.lastPlayed).sort((a, b) => b.lastPlayed - a.lastPlayed)[0];
+    lead = [...games].filter(lastPlay).sort((a, b) => lastPlay(b) - lastPlay(a))[0];
     leadWhy = "Last played";
     if (lead) lead = {...lead, m30: 0};
   }
@@ -1199,9 +1199,13 @@ function filterGames(games) {
   const q = state.q.trim().toLowerCase();
   return games.filter(g => (!q || g.name.toLowerCase().includes(q)));
 }
+// Steam moves a game's last-played date without any playtime (an install, a
+// launcher that opens and closes), so a game with 0 minutes counts as never played
+const lastPlay = g => (g.minutes ? g.lastPlayed || 0 : 0);
 function sortGames(rows) {
   const {key, dir} = state.sort;
-  return rows.sort((a, b) => key === "name" ? dir * a.name.localeCompare(b.name) : dir * ((a[key] || 0) - (b[key] || 0)) || a.name.localeCompare(b.name));
+  const val = key === "lastPlayed" ? lastPlay : g => g[key] || 0;
+  return rows.sort((a, b) => key === "name" ? dir * a.name.localeCompare(b.name) : dir * (val(a) - val(b)) || a.name.localeCompare(b.name));
 }
 function hiddenToggle() {
   return (state.snap.games || []).some(g => g.hidden) ? `<label><input type="checkbox" id="hid"${state.hidden ? " checked" : ""}> show hidden</label>` : "";
@@ -1252,7 +1256,7 @@ function renderRows() {
   $("#lib-count").textContent = `${rows.length} of ${visibleGames(state.snap).length} games`;
   const shown = rows.slice(0, state.limit);
   $("#rows").innerHTML = shown.map(g => {
-    const lp = g.lastPlayed ? new Date(g.lastPlayed * 1000).toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"}) : "never";
+    const lp = lastPlay(g) ? new Date(g.lastPlayed * 1000).toLocaleDateString(undefined, {day: "numeric", month: "short", year: "numeric"}) : "never";
     return `<tr><td class="game"><div class="gc">${img(g.appid)}<span><a href="${storeUrl(g.appid)}" target="_blank" rel="noopener">${esc(g.name)}</a>${tags(g)}</span></div></td>
       <td class="num">${g.minutes ? fmtH(g.minutes) : "<span class='muted'>-</span>"}</td>
       <td class="num muted">${lp}</td>
