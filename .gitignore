@@ -7,3 +7,6 @@ __pycache__/
 *.pyc
 *.tmp
 .venv/
+
+# exports hold your SteamID, profile name and history
+steamshot-export-*.zip

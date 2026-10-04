@@ -36,6 +36,14 @@ STEAM_ID64_BASE = 76561197960265728
 SKIP_APPS = {7, 480, 760, 202355, 228980, 241100, 250820, 1070560, 1391110,
              1493710, 1628350, 2371090}
 SKIP_TYPES = {"tool", "config"}
+# str.isdigit() also accepts "²" and other digits int() refuses, and a long
+# enough digit string trips Python's int conversion limit: only ASCII, capped
+NUMBER = re.compile(r"[0-9]{1,19}")
+
+
+def number(s):
+    """int(s) for a plain non-negative number in a Steam file, else None."""
+    return int(s) if isinstance(s, str) and NUMBER.fullmatch(s) else None
 
 
 def read_text(path):
@@ -104,7 +112,9 @@ def library_dirs(root):
 
 def to_account_id(value):
     """32-bit account id from either form: the account id itself or a SteamID64."""
-    n = int(str(value).strip())
+    n = number(str(value).strip())
+    if n is None:
+        raise ValueError(f"not a Steam account id: {value!r}")
     return n - STEAM_ID64_BASE if n >= STEAM_ID64_BASE else n
 
 
@@ -120,10 +130,11 @@ def list_accounts(root):
         return out
     for name in entries:
         cfg = os.path.join(base, name, "config", "localconfig.vdf")
-        if not name.isdigit() or int(name) == 0 or not os.path.exists(cfg):
+        acct = number(name)
+        if not acct or acct >= 2 ** 32 or not os.path.exists(cfg):
             continue
-        sid = str(STEAM_ID64_BASE + int(name))
-        out.append({"accountId": int(name), "steamid64": sid,
+        sid = str(STEAM_ID64_BASE + acct)
+        out.append({"accountId": acct, "steamid64": sid,
                     "persona": personas.get(sid, ""),
                     "lastUsed": os.path.getmtime(cfg)})
     out.sort(key=lambda a: -a["lastUsed"])
@@ -186,17 +197,18 @@ def parse_localconfig(path):
             if m:  # a key that opens a block on the next line
                 if m.group(1).lower() == "apps" and in_apps is None:
                     in_apps = depth
-                elif in_apps is not None and depth == in_apps + 1 and m.group(1).isdigit():
-                    cur = int(m.group(1))
-                    apps.setdefault(cur, {"minutes": 0, "lastPlayed": 0})
+                elif in_apps is not None and depth == in_apps + 1:
+                    cur = number(m.group(1))
+                    if cur is not None:
+                        apps.setdefault(cur, {"minutes": 0, "lastPlayed": 0})
                 continue
             kv = re.match(r'"([^"]+)"\s+"([^"]*)"\s*$', s)
             if kv and cur is not None and depth == in_apps + 2:
-                key, val = kv.group(1).lower(), kv.group(2)
-                if key == "playtime" and val.isdigit():
-                    apps[cur]["minutes"] = max(apps[cur]["minutes"], int(val))
-                elif key == "lastplayed" and val.isdigit():
-                    apps[cur]["lastPlayed"] = max(apps[cur]["lastPlayed"], int(val))
+                key, val = kv.group(1).lower(), number(kv.group(2))
+                if key == "playtime" and val is not None:
+                    apps[cur]["minutes"] = max(apps[cur]["minutes"], val)
+                elif key == "lastplayed" and val is not None:
+                    apps[cur]["lastPlayed"] = max(apps[cur]["lastPlayed"], val)
     return apps
 
 
@@ -219,14 +231,16 @@ def parse_appinfo(path):
         return {}
     magic = struct.unpack_from("<I", blob, 0)[0]
     version = magic & 0xFF
-    if (magic >> 8) != 0x075644 or version < 0x27:
+    if (magic >> 8) != 0x075644 or not 0x27 <= version <= 0x29:
         return {}
     try:
-        if version >= 0x29:
+        if version == 0x29:
             table_off = struct.unpack_from("<q", blob, 8)[0]
             if not 0 < table_off < len(blob):
                 return {}
             count = struct.unpack_from("<i", blob, table_off)[0]
+            if not 0 < count <= 1_000_000:  # the real table has a few thousand keys
+                return {}
             pos, strings = table_off + 4, []
             for _ in range(count):
                 end = blob.index(b"\x00", pos)
@@ -362,7 +376,7 @@ def parse_collections(root, account_id):
                         "cloud-storage-namespace-1.json")
     try:
         entries = json.loads(read_text(path))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return {}, set(), set()
     cols, hidden, favourite = {}, set(), set()
     try:
@@ -372,14 +386,15 @@ def parse_collections(root, account_id):
                 continue
             try:
                 value = json.loads(rec.get("value") or "")
-            except ValueError:
+            except (ValueError, RecursionError):
                 continue
+            added = value.get("added")
             ids = set()
-            for appid in value.get("added") or []:
-                try:
-                    ids.add(int(appid))
-                except (TypeError, ValueError):
-                    continue
+            # a list of numbers (or digit strings); a bare string would iterate as digits
+            for a in added if isinstance(added, list) else []:
+                a = number(a) if isinstance(a, str) else a
+                if isinstance(a, int) and not isinstance(a, bool) and 0 < a < 2 ** 32:
+                    ids.add(a)
             kind = key.split(".", 1)[1]
             if kind == "hidden":
                 hidden |= ids
@@ -387,7 +402,8 @@ def parse_collections(root, account_id):
             if kind == "favorite":
                 favourite |= ids
                 continue
-            name = (value.get("name") or "").strip()
+            name = value.get("name")
+            name = name.strip() if isinstance(name, str) else ""
             if not name:
                 continue
             for appid in ids:
@@ -416,10 +432,10 @@ def parse_installed(dirs):
                 text = read_text(os.path.join(d, fn))
             except OSError:
                 continue
-            m = re.search(r'"appid"\s+"(\d+)"', text)
+            m = re.search(r'"appid"\s+"([0-9]{1,10})"', text)
             if not m:
                 continue
-            size = re.search(r'"SizeOnDisk"\s+"(\d+)"', text)
+            size = re.search(r'"SizeOnDisk"\s+"([0-9]{1,19})"', text)
             installed[int(m.group(1))] = int(size.group(1)) if size else 0
     return installed
 

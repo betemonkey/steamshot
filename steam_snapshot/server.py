@@ -11,21 +11,44 @@ otherwise - your playtime stays on your machine.
   GET /api/history?account=ID    playtime gained per day
   GET /api/art?account=ID        artwork URLs per app id
   GET /api/version               running version and update status
+
+Requests must name this server in their Host header (an IP address,
+localhost or the configured host), so a web page that points its own domain
+at 127.0.0.1 (DNS rebinding) cannot read the data.
 """
+import ipaddress
 import json
 import mimetypes
 import os
 import re
+import socket
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from . import __version__
-from .snapshot import read_json, snapshot_dates
+from .snapshot import clean_art, read_json, snapshot_dates
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
-ACCOUNT_RE = re.compile(r"^\d{1,20}$")
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+ACCOUNT_RE = re.compile(r"\A[0-9]{1,20}\Z")
+DATE_RE = re.compile(r"\A[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
+# the page is one self-contained file; images come from Steam's CDN only
+CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+       "img-src 'self' data: blob: https://*.steamstatic.com; connect-src 'self'; "
+       "base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+
+
+def _num(v):
+    return v if isinstance(v, int) and not isinstance(v, bool) else 0
+
+
+def _dict(v):
+    return v if isinstance(v, dict) else {}
+
+
+def _games(snap):
+    return [g for g in (snap.get("games") if isinstance(snap.get("games"), list) else []) if isinstance(g, dict)]
 
 
 class Data:
@@ -65,9 +88,10 @@ class Data:
             dates = snapshot_dates(acct)
             if not dates:
                 continue
-            latest = self._load(os.path.join(acct, "snapshots", f"{dates[-1]}.json")) or {}
+            latest = _dict(self._load(os.path.join(acct, "snapshots", f"{dates[-1]}.json")))
+            persona = _dict(latest.get("account")).get("persona")
             out.append({"steamid64": name,
-                        "persona": (latest.get("account") or {}).get("persona", ""),
+                        "persona": persona if isinstance(persona, str) else "",
                         "latest": dates[-1], "count": len(dates),
                         "demo": bool(latest.get("demo"))})
         out.sort(key=lambda a: a["latest"], reverse=True)
@@ -77,10 +101,10 @@ class Data:
         acct = os.path.join(self.data_dir, account)
         out = []
         for d in snapshot_dates(acct):
-            snap = self._load(os.path.join(acct, "snapshots", f"{d}.json")) or {}
-            games = [g for g in snap.get("games") or [] if not g.get("hidden")]
+            snap = _dict(self._load(os.path.join(acct, "snapshots", f"{d}.json")))
+            games = [g for g in _games(snap) if not g.get("hidden")]
             out.append({"date": d, "taken": snap.get("taken"), "games": len(games),
-                        "minutes": sum(int(g.get("minutes") or 0) for g in games)})
+                        "minutes": sum(_num(g.get("minutes")) for g in games)})
         return out
 
     def snapshot(self, account, day=None):
@@ -93,34 +117,36 @@ class Data:
         if day not in dates:
             return None
         snap = self._load(os.path.join(acct, "snapshots", f"{day}.json"))
-        if snap is None:
+        if not isinstance(snap, dict):
             return None
         idx = dates.index(day)
         prev = None
         if idx > 0:
-            p = self._load(os.path.join(acct, "snapshots", f"{dates[idx - 1]}.json")) or {}
+            p = _dict(self._load(os.path.join(acct, "snapshots", f"{dates[idx - 1]}.json")))
             # the previous day's library, trimmed to what the "changes" card needs
             prev = {"date": dates[idx - 1],
                     "games": [{"appid": g.get("appid"), "name": g.get("name"),
-                               "minutes": g.get("minutes", 0),
+                               "minutes": _num(g.get("minutes")),
                                "hidden": bool(g.get("hidden"))}
-                              for g in p.get("games") or []]}
+                              for g in _games(p)]}
         return {**snap, "previous": prev}
 
     def art(self, account):
-        cache = self._load(os.path.join(self.data_dir, account, "art.json")) or {}
+        cache = clean_art(self._load(os.path.join(self.data_dir, account, "art.json")))
         return {a: {k: v for k, v in rec.items() if k != "t"}
-                for a, rec in cache.items() if isinstance(rec, dict) and len(rec) > 1}
+                for a, rec in cache.items() if len(rec) > 1}
 
     def history(self, account):
-        hist = self._load(os.path.join(self.data_dir, account, "history.json")) or {}
-        return {"since": hist.get("since"), "days": hist.get("days") or {}}
+        hist = _dict(self._load(os.path.join(self.data_dir, account, "history.json")))
+        return {"since": hist.get("since"), "days": _dict(hist.get("days"))}
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = f"steam-snapshot/{__version__}"
-    data = None  # set by make_server
-    cfg = None   # the full config, for the update status; None in tests
+    timeout = 30      # an idle or half-sent request does not hold a thread for ever
+    data = None       # set by make_server
+    cfg = None        # the full config, for the update status; None in tests
+    host_name = None  # the configured host, also accepted in the Host header
 
     def log_message(self, fmt, *args):  # keep the console quiet
         pass
@@ -133,10 +159,36 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", CSP)
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
         self.wfile.write(body)
 
+    def host_ok(self):
+        """The Host header names this server: an IP address (what a rebinding
+        page cannot send), localhost, or the configured host, on our port."""
+        m = re.fullmatch(r"(\[[0-9a-fA-F:.]+\]|[^:\[\]]+)(?::([0-9]{1,5}))?", self.headers.get("Host") or "")
+        if not m or (m.group(2) and int(m.group(2)) != self.server.server_address[1]):
+            return False
+        name = m.group(1).strip("[]").lower()
+        if name in ("localhost", (self.host_name or "").lower()):
+            return True
+        try:
+            ipaddress.ip_address(name)
+        except ValueError:
+            return False
+        return True
+
     def do_GET(self):
+        if not self.host_ok():
+            return self.send(421, {"error": "unknown Host header"})
+        try:
+            return self.route()
+        except Exception:  # an odd file must not take the whole dashboard down
+            return self.send(500, {"error": "could not read the data"})
+
+    def route(self):
         url = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
         account = q.get("account", "")
@@ -182,6 +234,23 @@ class Handler(BaseHTTPRequestHandler):
         self.send(200, body, ctype)
 
 
+class Server(ThreadingHTTPServer):
+    daemon_threads = True
+    # On Windows SO_REUSEADDR lets a second process bind the same port and
+    # take requests meant for this one; ask for the port exclusively instead.
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self):
+        if sys.platform == "win32" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
+class Server6(Server):
+    address_family = socket.AF_INET6
+
+
 def make_server(data_dir, host, port, options, cfg=None):
-    handler = type("BoundHandler", (Handler,), {"data": Data(data_dir, options), "cfg": cfg})
-    return ThreadingHTTPServer((host, port), handler)
+    handler = type("BoundHandler", (Handler,), {"data": Data(data_dir, options), "cfg": cfg,
+                                                 "host_name": host})
+    return (Server6 if ":" in host else Server)((host, port), handler)

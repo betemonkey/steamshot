@@ -23,6 +23,7 @@ GET_WISHLIST = "https://api.steampowered.com/IWishlistService/GetWishlist/v1/"
 APPDETAILS = "https://store.steampowered.com/api/appdetails"
 USER_AGENT = f"steam-snapshot/{__version__}"
 BATCH = 50
+MAX_RESPONSE = 32 * 1024 * 1024  # a batch of 50 items is well under 1 MB
 ART_BASE = "https://shared.akamai.steamstatic.com/store_item_assets/"
 # dashboard name -> GetItems asset key
 ART_KINDS = {"header": "header", "capsule": "main_capsule", "small": "small_capsule",
@@ -38,12 +39,33 @@ class StoreError(Exception):
 
 
 def get_json(url, timeout=20):
+    """The JSON object at url. Anything else - an error, a list, a huge or
+    broken body - is a StoreError, so a change on Steam's side can only ever
+    cost a lookup, never the snapshot."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read().decode("utf-8", "replace"))
-    except (urllib.error.URLError, OSError, ValueError) as e:
+            body = r.read(MAX_RESPONSE + 1)
+        if len(body) > MAX_RESPONSE:
+            raise ValueError("response too large")
+        data = json.loads(body.decode("utf-8", "replace"))
+    except (urllib.error.URLError, OSError, ValueError, RecursionError) as e:
         raise StoreError(f"{type(e).__name__}: {e}") from e
+    if not isinstance(data, dict):
+        raise StoreError(f"unexpected answer from {url.split('?')[0]}")
+    return data
+
+
+def _dict(v):
+    return v if isinstance(v, dict) else {}
+
+
+def _date(ts, tz=None):
+    """A datetime for a unix time, or None when it is out of range."""
+    try:
+        return datetime.fromtimestamp(ts, tz)
+    except (OSError, OverflowError, ValueError):
+        return None
 
 
 def get_items(appids, country="US", language="english", release=False, assets=False):
@@ -64,7 +86,10 @@ def get_items(appids, country="US", language="english", release=False, assets=Fa
                                                          ("include_assets", assets)) if on}
         q = urllib.parse.urlencode({"input_json": json.dumps(req)})
         data = get_json(f"{GET_ITEMS}?{q}")
-        for it in ((data.get("response") or {}).get("store_items") or []):
+        items = _dict(data.get("response")).get("store_items")
+        for it in items if isinstance(items, list) else []:
+            if not isinstance(it, dict):
+                continue
             try:
                 appid = int(it.get("appid") or it.get("id") or 0)
             except (TypeError, ValueError):
@@ -82,7 +107,7 @@ def art_of(item):
     the dashboard used to build is a 404 for newer and recently updated games.
     Everything is checked against a strict pattern: these URLs end up in the
     dashboard's HTML."""
-    assets = (item or {}).get("assets") or {}
+    assets = _dict(_dict(item).get("assets"))
     fmt = assets.get("asset_url_format")
     if not isinstance(fmt, str) or not ART_FORMAT_RE.match(fmt):
         return {}
@@ -97,7 +122,8 @@ def art_of(item):
 def appdetails_name(appid):
     """Fallback name lookup for ids the batched call did not know."""
     data = get_json(f"{APPDETAILS}?appids={int(appid)}&filters=basic")
-    return str((((data.get(str(appid)) or {}).get("data")) or {}).get("name") or "")
+    name = _dict(_dict(data.get(str(appid))).get("data")).get("name")
+    return name if isinstance(name, str) else ""
 
 
 def release_of(item):
@@ -110,20 +136,21 @@ def release_of(item):
     is flagged by coming_soon_display; those keep no day, so a vague window
     never turns into an invented countdown.
     """
-    rel = (item or {}).get("release") or {}
+    item = _dict(item)
+    rel = _dict(item.get("release"))
     coming = bool(item.get("is_coming_soon") or rel.get("is_coming_soon")
                   or rel.get("coming_soon_display"))
     try:
         ts = int(rel.get("steam_release_date") or 0)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         ts = 0
+    d = _date(ts) if ts > 0 else None
     disp = rel.get("coming_soon_display")
-    if ts > 0 and (not disp or disp == "date_full"):
-        d = datetime.fromtimestamp(ts)
+    if d and (not disp or disp == "date_full"):
         return d.date().isoformat(), f"{d.day} {MONTHS[d.month - 1]} {d.year}", coming
-    text = (rel.get("custom_release_date_message") or "").strip()
-    if not text and ts > 0:
-        d = datetime.fromtimestamp(ts)
+    text = rel.get("custom_release_date_message")
+    text = text.strip()[:80] if isinstance(text, str) else ""
+    if not text and d:
         text = {"date_quarter": f"Q{(d.month - 1) // 3 + 1} {d.year}",
                 "date_year": str(d.year),
                 "date_month": f"{MONTHS[d.month - 1]} {d.year}"}.get(disp, "")
@@ -138,7 +165,7 @@ def wishlist(steamid64):
     "don't know", not "empty"; callers keep the last good list.
     """
     data = get_json(f"{GET_WISHLIST}?" + urllib.parse.urlencode({"steamid": str(steamid64)}))
-    items = (data.get("response") or {}).get("items")
+    items = _dict(data.get("response")).get("items")
     if not isinstance(items, list):
         return None
     out = []
@@ -147,10 +174,10 @@ def wishlist(steamid64):
             appid = int(it.get("appid") or 0)
             added = int(it.get("date_added") or 0)
             priority = int(it.get("priority") or 0)
-        except (AttributeError, TypeError, ValueError):
+        except (AttributeError, TypeError, ValueError, OverflowError):
             continue
-        if appid > 0:
+        if 0 < appid < 2 ** 32:
+            d = _date(added, timezone.utc) if added > 0 else None
             out.append({"appid": appid, "priority": priority,
-                        "added": (datetime.fromtimestamp(added, timezone.utc)
-                                  .date().isoformat() if added else "")})
+                        "added": d.date().isoformat() if d else ""})
     return out

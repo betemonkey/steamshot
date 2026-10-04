@@ -593,12 +593,22 @@ const OLD_ART = "https://cdn.cloudflare.steamstatic.com/steam/apps/";
 // (art.json, served as /api/art). The plain path is only the fallback.
 const ART_KIND = {"header.jpg": "header", "capsule_616x353.jpg": "capsule", "capsule_231x87.jpg": "small",
                   "library_600x900.jpg": "library", "library_hero.jpg": "hero"};
-const artUrl = (appid, file) => ((state.art[appid] || {})[ART_KIND[file]]) || ART + appid + "/" + file;
+// App ids and art URLs go into attributes, inline handlers and CSS url(), where
+// esc() is not enough. Both are checked here, so nothing else can reach markup:
+// an app id is digits only, an art URL is a plain Steam CDN path.
+const aid = appid => /^[0-9]{1,10}$/.test(String(appid)) ? String(appid) : "0";
+const ART_OK = /^https:\/\/shared\.akamai\.steamstatic\.com\/store_item_assets\/steam\/apps\/[0-9]+\/[A-Za-z0-9_\/-]+\.(jpg|png|webp)(\?t=[0-9]+)?$/;
+const knownArt = (appid, kind) => {
+  const rec = state.art && Object.hasOwn(state.art, aid(appid)) ? state.art[aid(appid)] : null;
+  const u = rec && Object.hasOwn(rec, kind) ? rec[kind] : "";
+  return typeof u === "string" && ART_OK.test(u) ? u : "";
+};
+const artUrl = (appid, file) => knownArt(appid, ART_KIND[file]) || ART + aid(appid) + "/" + file;
 function img(appid, cls = "thumb") {
   if (!state.options.images) return "";
-  const known = (state.art[appid] || {}).small;
-  const a = known || `${OLD_ART}${appid}/capsule_231x87.jpg`;
-  const b = known ? `${OLD_ART}${appid}/capsule_231x87.jpg` : artUrl(appid, "capsule_231x87.jpg");
+  const known = knownArt(appid, "small");
+  const a = known || `${OLD_ART}${aid(appid)}/capsule_231x87.jpg`;
+  const b = known ? `${OLD_ART}${aid(appid)}/capsule_231x87.jpg` : artUrl(appid, "capsule_231x87.jpg");
   return `<img class="${cls}" loading="lazy" alt="" src="${a}" data-alt="${b}" onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=''}else{this.style.visibility='hidden'}">`;
 }
 // cover art for a box that carries data-name: the first file, then the second,
@@ -611,7 +621,7 @@ const artBox = (appid, name, first, second, extra = "") =>
   `<a class="art${state.options.images ? "" : " noart"}" data-name="${esc(name)}" href="${storeUrl(appid)}" target="_blank" rel="noopener"${extra}>${art(appid, first, second)}</a>`;
 // a hero background: the wide library art, with the store header under it as a fallback
 const heroBg = appid => `url(${artUrl(appid, "library_hero.jpg")}), url(${artUrl(appid, "header.jpg")})`;
-const storeUrl = appid => `https://store.steampowered.com/app/${appid}/`;
+const storeUrl = appid => `https://store.steampowered.com/app/${aid(appid)}/`;
 
 // ---------- theme and layout ----------
 // ---------- palette (colours) ----------
@@ -723,7 +733,7 @@ async function boot() {
     openYirDialog();
     $("#yirYear").value = p.get("yir"); $("#yirYear").onchange();
     yirStart();
-    if (p.get("slide")) { yir.paused = true; yirPauseLabel(); yirGo(+p.get("slide") - 1); }
+    if (/^[0-9]{1,3}$/.test(p.get("slide") || "")) { yir.paused = true; yirPauseLabel(); yirGo(+p.get("slide") - 1); }
   }
 }
 
@@ -809,7 +819,7 @@ function streaks(endIso) {
   return {cur, best};
 }
 function collectionTotals(games) {
-  const by = {};
+  const by = Object.create(null);  // a collection may be called "__proto__"
   games.forEach(g => {
     const cols = g.collections && g.collections.length ? g.collections : [g.type === "demo" ? "Demos" : "Not in a collection"];
     cols.forEach(c => { by[c] = by[c] || {mins: 0, n: 0}; by[c].mins += g.minutes || 0; by[c].n++; });
@@ -969,7 +979,7 @@ const CHIPS = {
   "\u0000none": ["Not in a collection", g => !(g.collections || []).length],
 };
 function chipFilter(key) {
-  return CHIPS[key] ? CHIPS[key][1] : g => (g.collections || []).includes(key);
+  return Object.hasOwn(CHIPS, key) ? CHIPS[key][1] : g => (g.collections || []).includes(key);
 }
 function wireCovers() {
   $("#q").oninput = e => { state.q = e.target.value; state.limit = 50; renderCovers(); };
@@ -982,7 +992,7 @@ function renderCovers() {
   const cols = [...new Set(all.flatMap(g => g.collections || []))].sort((a, b) => a.localeCompare(b));
   const keys = ["", "\u0001inst", "\u0001never", ...cols, ...(all.some(g => !(g.collections || []).length) && cols.length ? ["\u0000none"] : [])];
   if (!keys.includes(state.chip)) state.chip = "";
-  $("#chips").innerHTML = keys.map(k => `<button data-chip="${esc(k)}" aria-pressed="${k === state.chip}">${esc(CHIPS[k] ? CHIPS[k][0] : k)}</button>`).join("");
+  $("#chips").innerHTML = keys.map(k => `<button data-chip="${esc(k)}" aria-pressed="${k === state.chip}">${esc(Object.hasOwn(CHIPS, k) ? CHIPS[k][0] : k)}</button>`).join("");
   const rows = sortGames(filterGames(all).filter(chipFilter(state.chip)));
   $("#lib-count").textContent = `${rows.length} of ${all.length} games`;
   const shown = rows.slice(0, state.limit);
@@ -1352,7 +1362,7 @@ function yirBuild(year, compare) {
   const unplayed = w.end === snap.date ? visibleGames(snap).filter(g => !g.minutes).length : null;
   const colsOf = a => (byId[a] && byId[a].collections && byId[a].collections.length) ? byId[a].collections : ["Not in a collection"];
   const colShare = st => {
-    const by = {};
+    const by = Object.create(null);
     Object.entries(st.per).forEach(([a, m]) => colsOf(a).forEach(c => by[c] = (by[c] || 0) + m));
     return by;
   };

@@ -17,15 +17,22 @@ so it starts the day the tool is first run and cannot be backfilled.
 import json
 import os
 import re
+import tempfile
 import time
 from datetime import date, datetime, timedelta
 
 from . import __version__, steamfiles
 
 SCHEMA = 1
-DATE_FILE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.json$")
+DATE_FILE = re.compile(r"\A([0-9]{4}-[0-9]{2}-[0-9]{2})\.json\Z")
+APPID_KEY = re.compile(r"\A[0-9]{1,10}\Z")
+# the only artwork addresses the dashboard will put in its HTML
+ART_URL = re.compile(r"\Ahttps://shared\.akamai\.steamstatic\.com/store_item_assets/steam/apps/[0-9]+/"
+                     r"[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*\.(jpg|png|webp)(\?t=[0-9]+)?\Z")
 LOG_NAME = "steam-snapshot.log"
 LOG_MAX_BYTES = 512 * 1024
+LOCK_NAME = "snapshot.lock"
+LOCK_STALE = 15 * 60    # a lock older than this was left by a run that died
 ART_REFRESH_DAYS = 30   # art paths change when a store page is updated
 ART_MAX_PER_RUN = 400   # a first run with a huge library catches up over a few runs
 
@@ -35,20 +42,77 @@ class SnapshotError(Exception):
 
 
 def write_json(path, data):
-    """Write via a temp file so a reader never sees half a file."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
-    os.replace(tmp, path)
+    """Write via a temp file so a reader never sees half a file. The temp
+    name is unique, so two runs at once never write into the same one."""
+    folder = os.path.dirname(path)
+    os.makedirs(folder, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=folder, prefix=os.path.basename(path) + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            # ASCII escapes, so a broken string (a lone surrogate) cannot fail mid-write
+            json.dump(data, fh, separators=(",", ":"))
+            fh.flush()
+            os.fsync(fh.fileno())
+        for attempt in range(5):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:  # Windows: the dashboard has the file open
+                if attempt == 4:
+                    raise
+                time.sleep(0.2)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def read_json(path, default=None):
     try:
         with open(path, encoding="utf-8") as fh:
             return json.load(fh)
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return default
+
+
+def valid_day(s):
+    """True for a real YYYY-MM-DD date."""
+    if not (isinstance(s, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", s)):
+        return False
+    try:
+        date.fromisoformat(s)
+    except ValueError:
+        return False
+    return True
+
+
+def clean_names(cache):
+    """names.json with anything that is not {app id: name} dropped."""
+    if not isinstance(cache, dict):
+        return {}
+    return {k: v for k, v in cache.items() if APPID_KEY.match(str(k)) and isinstance(v, str)}
+
+
+def clean_art(cache):
+    """art.json with anything that is not {app id: {"t": time, kind: Steam
+    image URL}} dropped. These URLs go into the dashboard's HTML, and an
+    imported file has not been through store.art_of's checks."""
+    if not isinstance(cache, dict):
+        return {}
+    out = {}
+    for k, rec in cache.items():
+        if not (APPID_KEY.match(str(k)) and isinstance(rec, dict)):
+            continue
+        t = rec.get("t")
+        ok = isinstance(t, (int, float)) and not isinstance(t, bool) and 0 <= t < 1e11
+        row = {"t": int(t) if ok else 0}
+        for kind, url in rec.items():
+            if kind != "t" and isinstance(url, str) and ART_URL.match(url):
+                row[str(kind)] = url
+        out[str(k)] = row
+    return out
 
 
 def account_dir(data_dir, steamid64):
@@ -86,7 +150,7 @@ def resolve_names(games, acct_dir, online, notes):
     """Fill in names the local cache did not have, from the store; cached."""
     from . import store
     cache_path = os.path.join(acct_dir, "names.json")
-    cache = read_json(cache_path, {}) or {}
+    cache = clean_names(read_json(cache_path, {}))
     missing = [g["appid"] for g in games if not g["name"] and str(g["appid"]) not in cache]
     if missing:
         try:
@@ -112,9 +176,9 @@ def resolve_art(appids, acct_dir, online, notes, now=None):
     from . import store
     now = time.time() if now is None else now
     path = os.path.join(acct_dir, "art.json")
-    cache = read_json(path, {}) or {}
+    cache = clean_art(read_json(path, {}))
     due = [a for a in dict.fromkeys(str(a) for a in appids)
-           if a not in cache or now - float((cache.get(a) or {}).get("t") or 0) > ART_REFRESH_DAYS * 86400]
+           if a not in cache or now - cache[a]["t"] > ART_REFRESH_DAYS * 86400]
     if not due:
         return
     due = due[:ART_MAX_PER_RUN]
@@ -133,7 +197,9 @@ def build_wishlist(account, games, previous, online, notes):
     but ok the previous snapshot's list is carried over, so a privacy toggle
     or an outage never blanks it."""
     from . import store
-    kept = (previous or {}).get("wishlist") or []
+    kept = (previous or {}).get("wishlist")
+    kept = [w for w in kept if isinstance(w, dict) and isinstance(w.get("appid"), int)] \
+        if isinstance(kept, list) else []
     try:
         items = store.wishlist(account["steamid64"])
     except store.StoreError as e:
@@ -170,20 +236,55 @@ def build_wishlist(account, games, previous, online, notes):
 
 # ---------- history ----------
 
+def load_history(path):
+    """history.json, with "days" and "last" always dicts. A missing file is a
+    fresh start. One that can't be read right now raises SnapshotError (the
+    next run tries again); one that is damaged is moved aside, never
+    overwritten, because Steam cannot give those days back."""
+    if not os.path.exists(path):
+        return {"days": {}, "last": {}}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+    except (OSError, ValueError) as e:
+        if isinstance(e, OSError):
+            raise SnapshotError(f"cannot read {path}: {e}") from e
+        text = ""  # not UTF-8: damaged
+    try:
+        hist = json.loads(text)
+        if not isinstance(hist, dict):
+            raise ValueError("not a JSON object")
+    except (ValueError, RecursionError) as e:
+        aside = f"{path}.damaged-{datetime.now():%Y%m%d-%H%M%S}"
+        try:
+            os.replace(path, aside)
+        except OSError as e2:
+            raise SnapshotError(f"{path} is damaged and could not be moved aside: {e2}") from e2
+        log_line(os.path.dirname(os.path.dirname(path)),
+                 f"history.json was damaged ({e}); kept as {os.path.basename(aside)}, starting a new one")
+        return {"days": {}, "last": {}}
+    days, last = hist.get("days"), hist.get("last")
+    hist["days"] = days if isinstance(days, dict) else {}
+    hist["last"] = {k: v for k, v in last.items() if isinstance(v, int)} if isinstance(last, dict) else {}
+    return hist
+
+
 def update_history(acct_dir, minutes_by_app, today, keep_days):
     """Add today's playtime gains. A game seen for the first time adds 0, so a
     new purchase or a first run never lands as a fake spike."""
     path = os.path.join(acct_dir, "history.json")
-    hist = read_json(path, {}) or {}
-    last = hist.get("last") or {}
-    days = hist.get("days") or {}
+    hist = load_history(path)
+    last = hist["last"]
+    days = hist["days"]
     hist.setdefault("since", today)
-    bucket = days.setdefault(today, {})
+    bucket = days.get(today)
+    bucket = days[today] = bucket if isinstance(bucket, dict) else {}
     for appid, mins in minutes_by_app.items():
         key = str(appid)
         prev = last.get(key)
         if prev is not None and mins > prev:
-            bucket[key] = bucket.get(key, 0) + (mins - prev)
+            had = bucket.get(key)
+            bucket[key] = (had if isinstance(had, int) else 0) + (mins - prev)
         last[key] = mins
     if not bucket:
         days.pop(today, None)
@@ -213,6 +314,36 @@ def prune_snapshots(acct_dir, today, keep_days):
 
 # ---------- the run ----------
 
+def acquire_lock(data_dir):
+    """A lock file per data folder, so a manual run and the scheduled one
+    never write the same history at once. Returns its path, or None while
+    another run holds it."""
+    os.makedirs(data_dir, exist_ok=True)
+    path = os.path.join(data_dir, LOCK_NAME)
+    for _ in range(2):
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(path) > LOCK_STALE:
+                    os.remove(path)
+                    continue
+            except OSError:
+                continue
+            return None
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return path
+    return None
+
+
+def release_lock(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def take(cfg, now=None):
     """Read the library, enrich it, write today's snapshot. Returns a summary
     dict; raises SnapshotError when there is nothing trustworthy to write."""
@@ -232,9 +363,23 @@ def take(cfg, now=None):
         raise SnapshotError("no games could be read - refusing to write an empty snapshot")
 
     data_dir = cfg["data_dir"]
+    lock = acquire_lock(data_dir)
+    if not lock:
+        raise SnapshotError("another snapshot run is in progress")
+    try:
+        return _write(cfg, now, today, account, games, sources)
+    finally:
+        release_lock(lock)
+
+
+def _write(cfg, now, today, account, games, sources):
+    data_dir, snap_cfg = cfg["data_dir"], cfg["snapshot"]
     acct_dir = account_dir(data_dir, account["steamid64"])
-    dates = snapshot_dates(acct_dir)
+    # a dated-in-the-future file (an odd import) is never "the previous run"
+    dates = [d for d in snapshot_dates(acct_dir) if d <= today]
     previous = read_json(os.path.join(acct_dir, "snapshots", f"{dates[-1]}.json")) if dates else None
+    if not isinstance(previous, dict):
+        previous = None
 
     notes, wishlist, wl_status = [], [], "off"
     online = cfg["online"]

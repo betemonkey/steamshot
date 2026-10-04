@@ -52,11 +52,10 @@ cannot be backfilled**, so it's worth scheduling it early.
 Do this on the PC where you play, since it reads that PC's Steam files. It takes about
 five minutes. The command is always `python -m steam_snapshot`, whatever the folder is called.
 
-### 1. Get access to the code
+### 1. Get the code
 
-This repository is private. Ask the owner to add your GitHub account under
-**Settings > Collaborators**, then accept the invite from your email. Alternatively,
-sign in to GitHub and use **Code > Download ZIP** on the repository page.
+Clone it with Git (step 3), which lets it update itself, or use **Code > Download ZIP**
+on the repository page.
 
 ### 2. Install Python 3.11+ (and Git)
 
@@ -78,7 +77,11 @@ You also need the **Steam desktop client** installed, and logged in on this PC a
 
 ### 3. Download it to a permanent folder
 
-The scheduled job runs from this folder, so pick a place you won't move or delete:
+The scheduled job runs from this folder, so pick a place you won't move or delete. Keep it
+inside your own user folder (as below): a folder straight under `C:\` can be changed by
+every account on the PC, and the scheduled job runs whatever code is in it. Avoid a
+OneDrive or Dropbox folder too, since your `data/` would be uploaded and sync locks can
+make runs fail.
 
 ```powershell
 # Windows
@@ -94,7 +97,6 @@ git clone https://github.com/betemonkey/steamshot.git
 cd steamshot
 ```
 
-Git will ask you to sign in to GitHub the first time, because the repository is private.
 If you downloaded the ZIP instead, unzip it into that permanent place and `cd` into it.
 
 ### 4. Try the dashboard with demo data (optional)
@@ -177,6 +179,9 @@ get this.
 
 Your `config.toml` and `data/` folder are never touched by an update.
 
+Automatic updates mean the code on your PC follows this repository's `main` branch. If
+you would rather read each change before running it, set `auto = false` and pull by hand.
+
 Snapshots and history are now kept forever by default. If you created your `config.toml`
 with `init` before that change, it still says `keep_days = 365`, which deletes anything
 older than a year. Set it to `0` (or remove the line) to keep everything.
@@ -218,6 +223,14 @@ snapshot onwards stay as they are, and snapshots it already has are kept; import
 only fill in the time before. Running the same import twice changes nothing. The dashboard
 picks the new history up on its next refresh.
 
+An import is checked field by field: anything that isn't the right type (a game id that
+isn't a number, an artwork address that isn't on Steam's image server, a date in the
+future) is dropped, and a damaged zip changes nothing. Still, only import files you made
+yourself or trust.
+
+An export contains your SteamID64, your Steam profile name and your whole playtime
+history, so think before sharing one.
+
 ## Configuration
 
 `python -m steam_snapshot init` copies [`config.example.toml`](config.example.toml) to
@@ -233,7 +246,7 @@ data in `./data`.
 | | `keep_days` | `0` | Days of snapshots and history to keep. `0` keeps everything, forever. |
 | | `include_unowned` | `false` | Keep refunded or expired games that still carry old playtime. |
 | | `hide_appids` | `[]` | App ids to always leave out. |
-| `[online]` | `enabled` | `true` | Allow keyless calls to Steam's public store API. `false` = no network at all. |
+| `[online]` | `enabled` | `true` | Allow keyless calls to Steam's public store API, and the update check. `false` = the snapshot and server make no network calls. The dashboard page still loads cover art from Steam's CDN unless `images = false`. |
 | | `wishlist` | `true` | Fetch your wishlist. Needs a public "Game details" privacy setting. |
 | | `country`, `language` | `"US"`, `"english"` | Store region and language for names and release dates. |
 | `[dashboard]` | `host`, `port` | `127.0.0.1`, `8765` | Where the dashboard listens. |
@@ -352,12 +365,16 @@ your network can then see your library, since the dashboard has no login.
 | | |
 |---|---|
 | **Read** (never written) | In the Steam folder: `userdata/<id>/config/localconfig.vdf`, `appcache/appinfo.vdf`, `appcache/packageinfo.vdf`, `steamapps/appmanifest_*.acf` (in every library folder), `userdata/<id>/config/cloudstorage/cloud-storage-namespace-1.json`, and the profile names from `config/loginusers.vdf`. Login names and saved-password flags in that file are not read. |
-| **Sent** (only with `[online] enabled = true`) | To Steam's public endpoints (`api.steampowered.com`, `store.steampowered.com`): app ids whose names Steam's local cache is missing, app ids to look up where each game's artwork lives (about once a month per game), your wishlist's app ids, and your SteamID64 for the wishlist request. No key, no cookies, nothing else. To GitHub, unless `[updates] check = false`: a `git fetch` of this repo every 6 hours (or, for a copy that isn't a git checkout, one download of `steam_snapshot/__init__.py`). Nothing about your library. |
-| **Loaded by the dashboard** | Cover art from Steam's image CDN, unless `images = false`. |
-| **Stored** | `data/<steamid64>/snapshots/*.json`, `history.json` and `names.json`, plus `data/<steamid64>/art.json` (artwork addresses), `data/steam-snapshot.log` and `data/update.json` (the last update check). Outside the data folder, only an update changes files: `git pull` in the project folder. |
+| **Sent** (only with `[online] enabled = true`) | To Steam's public endpoints (`api.steampowered.com`, `store.steampowered.com`): app ids whose names Steam's local cache is missing, app ids to look up where each game's artwork lives (about once a month per game), your wishlist's app ids, and your SteamID64 for the wishlist request, along with the `country` and `language` settings and a `steam-snapshot/<version>` user agent. No key, no cookies, nothing else. To GitHub, unless `[updates] check = false`: a `git fetch` of this repo every 6 hours (or, for a copy that isn't a git checkout, one download of `steam_snapshot/__init__.py`). Nothing about your library. |
+| **Loaded by the dashboard** | Cover art from Steam's image CDN, unless `images = false`. That tells the CDN which games' art you view, like browsing the store does. The page sends no referrer, so it doesn't tell the CDN where the dashboard runs. |
+| **Stored** | `data/<steamid64>/snapshots/*.json`, `history.json` and `names.json`, plus `data/<steamid64>/art.json` (artwork addresses), `data/steam-snapshot.log`, `data/update.json` (the last update check) and, while a snapshot runs, `data/snapshot.lock`. A `history.json` that can't be read is never overwritten: it's renamed to `history.json.damaged-<time>` and a note goes in the log. Outside the data folder, only an update changes files: `git pull` in the project folder. |
 
-`config.toml`, `data/` and `demo-data/` are in `.gitignore`, so your library never ends up
-in a commit.
+`config.toml`, `data/`, `demo-data/` and export zips are in `.gitignore`, so your library
+never ends up in a commit. If you point `data_dir` somewhere else inside the project
+folder, add that folder to `.gitignore` too.
+
+The dashboard only answers requests addressed to it by IP address, `localhost` or the
+configured `host`, so a web page can't read it by pointing its own domain at your PC.
 
 ### Snapshot format
 

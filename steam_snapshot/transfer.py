@@ -21,15 +21,21 @@ import json
 import os
 import re
 import zipfile
-from datetime import datetime
+import zlib
+from datetime import date, datetime, timedelta
 
 from . import __version__
-from .snapshot import DATE_FILE, account_dir, read_json, write_json
+from .snapshot import (DATE_FILE, SnapshotError, account_dir, clean_art, clean_names,
+                       load_history, read_json, valid_day, write_json)
 
 MANIFEST = "steamshot-export.json"
-ACCOUNT_RE = re.compile(r"^\d{1,20}$")
-DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-MAX_MEMBER = 50 * 1024 * 1024  # no single file in an export is anywhere near this
+ACCOUNT_RE = re.compile(r"\A[0-9]{1,20}\Z")
+MAX_MEMBER = 8 * 1024 * 1024      # a snapshot of a 10,000-game library is ~2 MB
+MAX_TOTAL = 512 * 1024 * 1024     # all members together, uncompressed
+MAX_MEMBERS = 20000               # fifty years of daily snapshots
+MAX_MINUTES = 10 ** 7             # per game per day; anything bigger is not playtime
+ZIP_ERRORS = (zipfile.BadZipFile, zipfile.LargeZipFile, RuntimeError, NotImplementedError,
+              zlib.error, EOFError, OSError)
 
 
 class TransferError(Exception):
@@ -79,28 +85,102 @@ def export(data_dir, out_path, account=None):
 
 # ---------- import ----------
 
+def latest_day():
+    """The last date an import may carry: tomorrow, to allow for time zones.
+    A snapshot dated further ahead would stay "latest" for good."""
+    return (date.today() + timedelta(days=1)).isoformat()
+
+
+def _int(v, lo=0, hi=2 ** 53):
+    """v as an int in [lo, hi], or None. Accepts ints and digit strings,
+    never bools, floats or anything that only looks like a number."""
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, str) and re.fullmatch(r"[0-9]{1,16}", v):
+        v = int(v)
+    return v if isinstance(v, int) and lo <= v <= hi else None
+
+
+def _str(v, limit=500):
+    return v[:limit] if isinstance(v, str) else ""
+
+
 def clean_history(hist):
     """The usable part of a history document, or a TransferError."""
     if not isinstance(hist, dict) or not isinstance(hist.get("days"), dict):
         raise TransferError("not a history file: it needs a \"days\" object of YYYY-MM-DD dates")
-    days = {}
+    days, end = {}, latest_day()
     for day, apps in hist["days"].items():
-        if not DAY_RE.match(str(day)) or not isinstance(apps, dict):
+        if not valid_day(day) or day > end or not isinstance(apps, dict):
             continue
         row = {}
         for appid, mins in apps.items():
-            try:
-                appid, mins = int(appid), int(mins)
-            except (TypeError, ValueError):
-                continue
-            if appid > 0 and mins > 0:
+            appid, mins = _int(appid, 1, 2 ** 32), _int(mins, 1, MAX_MINUTES)
+            if appid and mins:
                 row[str(appid)] = mins
         if row:
             days[day] = row
     since = hist.get("since")
-    if not (isinstance(since, str) and DAY_RE.match(since)):
-        since = min(days) if days else None
+    if not (valid_day(since) and since <= end):
+        since = None
+    if days and (since is None or since > min(days)):
+        since = min(days)
     return {"since": since, "days": days}
+
+
+GAME_INTS = ("minutes", "lastPlayed", "bytes")
+GAME_FLAGS = ("installed", "owned", "hidden", "favourite")
+
+
+def clean_snapshot(doc):
+    """An imported snapshot rebuilt from the fields the dashboard uses, each
+    of the right type, or None if it isn't one. Everything in it ends up on
+    the dashboard, so nothing is taken on trust."""
+    if not isinstance(doc, dict) or not isinstance(doc.get("games"), list):
+        return None
+    games = []
+    for g in doc["games"]:
+        appid = _int(g.get("appid"), 1, 2 ** 32) if isinstance(g, dict) else None
+        if not appid:
+            continue
+        game = {"appid": appid, "name": _str(g.get("name")) or f"App {appid}", "type": _str(g.get("type"), 40)}
+        for k in GAME_INTS:
+            game[k] = _int(g.get(k)) or 0
+        for k in GAME_FLAGS:
+            if isinstance(g.get(k), bool):
+                game[k] = g[k]
+        cols = g.get("collections")
+        if isinstance(cols, list):
+            cols = [_str(c, 200) for c in cols if isinstance(c, str) and c.strip()]
+            if cols:
+                game["collections"] = cols
+        games.append(game)
+    wishlist = []
+    for w in doc.get("wishlist") if isinstance(doc.get("wishlist"), list) else []:
+        appid = _int(w.get("appid"), 1, 2 ** 32) if isinstance(w, dict) else None
+        if appid:
+            iso = w.get("releaseISO")
+            wishlist.append({"appid": appid, "name": _str(w.get("name")) or f"App {appid}",
+                             "added": w["added"] if valid_day(w.get("added")) else "",
+                             "priority": _int(w.get("priority")) or 0,
+                             "releaseISO": iso if valid_day(iso) else "",
+                             "release": _str(w.get("release"), 80), "comingSoon": w.get("comingSoon") is True})
+    acct = doc.get("account") if isinstance(doc.get("account"), dict) else {}
+    sources = doc.get("sources") if isinstance(doc.get("sources"), dict) else {}
+    out = {"schema": _int(doc.get("schema")) or 1, "tool": _str(doc.get("tool"), 80),
+           "taken": _str(doc.get("taken"), 40), "date": _str(doc.get("date"), 10),
+           "account": {"steamid64": _str(acct.get("steamid64"), 20),
+                       "accountId": _int(acct.get("accountId")) or 0,
+                       "persona": _str(acct.get("persona"), 200)},
+           "sources": {str(k)[:40]: v for k, v in sources.items()
+                       if isinstance(v, (bool, int)) and not isinstance(v, float)},
+           "games": games, "wishlist": wishlist,
+           "wishlistStatus": _str(doc.get("wishlistStatus"), 20),
+           "notes": [_str(n) for n in doc.get("notes") or [] if isinstance(n, str)][:50]
+           if isinstance(doc.get("notes"), list) else []}
+    if doc.get("demo") is True:
+        out["demo"] = True
+    return out
 
 
 def merge_history(local, incoming):
@@ -123,7 +203,11 @@ def merge_history(local, incoming):
 
 def _merge_into(data_dir, acct, incoming):
     path = os.path.join(account_dir(data_dir, acct), "history.json")
-    merged, added = merge_history(read_json(path, {}), incoming)
+    try:
+        local = load_history(path)  # a damaged local file is moved aside, not merged over
+    except SnapshotError as e:
+        raise TransferError(str(e)) from e
+    merged, added = merge_history(local, incoming)
     if added or not os.path.exists(path):
         write_json(path, merged)
     return added, merged["since"]
@@ -139,7 +223,7 @@ def import_file(data_dir, path, account=None):
     try:
         with open(path, encoding="utf-8-sig") as fh:  # -sig: Windows tools often add a BOM
             doc = json.load(fh)
-    except (OSError, ValueError) as e:
+    except (OSError, ValueError, RecursionError) as e:
         raise TransferError(f"{path} is neither a Steamshot export (.zip) nor a JSON history file: {e}") from e
     if not account:
         raise TransferError("a bare history file needs the account it belongs to (--account)")
@@ -150,56 +234,74 @@ def import_file(data_dir, path, account=None):
     return [{"account": account, "days": added, "snapshots": 0, "since": since}]
 
 
-def _import_zip(data_dir, path, only=None):
-    out = {}
-    with zipfile.ZipFile(path) as z:
-        members = {}
-        for info in z.infolist():
-            if info.is_dir() or info.filename == MANIFEST:
-                continue
-            # accept exactly the layout export() writes; anything else (absolute
-            # paths, "..", other files) is ignored, never written
-            parts = info.filename.split("/")
-            ok = (len(parts) == 2 and parts[1] in ("history.json", "names.json", "art.json")) or \
-                 (len(parts) == 3 and parts[1] == "snapshots" and DATE_FILE.match(parts[2]))
-            if not ok or not ACCOUNT_RE.match(parts[0]) or info.file_size > MAX_MEMBER:
-                continue
-            if only and parts[0] != only:
-                continue
-            members.setdefault(parts[0], []).append((parts, info))
-        if not members:
-            raise TransferError(f"{path} has no Steamshot data" + (f" for account {only}" if only else ""))
-
-        def load(info):
-            try:
-                return json.loads(z.read(info).decode("utf-8"))
-            except (ValueError, UnicodeDecodeError):
-                return None
-
-        for acct, items in sorted(members.items()):
-            base = account_dir(data_dir, acct)
-            snaps = 0
-            history = names = art = None
-            for parts, info in items:
+def _read_zip(path, only):
+    """{account: {"history", "names", "art", "snapshots": {day: doc}}}, every
+    document already cleaned. Nothing is written until the whole zip has
+    been read, so a damaged one changes nothing."""
+    found, total, end = {}, 0, latest_day()
+    try:
+        with zipfile.ZipFile(path) as z:
+            infos = z.infolist()
+            if len(infos) > MAX_MEMBERS:
+                raise TransferError(f"{path} has {len(infos)} files - more than any export would")
+            for info in infos:
+                if info.is_dir() or info.filename == MANIFEST:
+                    continue
+                # accept exactly the layout export() writes; anything else (absolute
+                # paths, "..", other files) is ignored, never written
+                parts = info.filename.split("/")
+                day = DATE_FILE.match(parts[2]) if len(parts) == 3 else None
+                ok = (len(parts) == 2 and parts[1] in ("history.json", "names.json", "art.json")) or \
+                     (day and parts[1] == "snapshots" and valid_day(day.group(1)) and day.group(1) <= end)
+                if not ok or not ACCOUNT_RE.match(parts[0]) or info.file_size > MAX_MEMBER:
+                    continue
+                if only and parts[0] != only:
+                    continue
+                total += info.file_size
+                if total > MAX_TOTAL:
+                    raise TransferError(f"{path} unpacks to more than {MAX_TOTAL // 2 ** 20} MB")
+                try:
+                    doc = json.loads(z.read(info).decode("utf-8"))
+                except (ValueError, UnicodeDecodeError, RecursionError):
+                    continue
+                acct = found.setdefault(parts[0], {"history": None, "names": {}, "art": {}, "snapshots": {}})
                 if parts[1] == "history.json":
-                    history = load(info)
+                    try:
+                        acct["history"] = clean_history(doc)
+                    except TransferError:
+                        pass
                 elif parts[1] == "names.json":
-                    names = load(info)
+                    acct["names"] = clean_names(doc)
                 elif parts[1] == "art.json":
-                    art = load(info)
+                    acct["art"] = clean_art(doc)
                 else:
-                    target = os.path.join(base, "snapshots", parts[2])
-                    doc = load(info)
-                    if os.path.exists(target) or not isinstance(doc, dict) or not isinstance(doc.get("games"), list):
-                        continue
-                    write_json(target, doc)
-                    snaps += 1
-            added, since = (0, None)
-            if history is not None:
-                added, since = _merge_into(data_dir, acct, clean_history(history))
-            for fname, doc in (("names.json", names), ("art.json", art)):
-                if isinstance(doc, dict):  # caches: what is already here wins
-                    cpath = os.path.join(base, fname)
-                    write_json(cpath, {**doc, **(read_json(cpath, {}) or {})})
-            out[acct] = {"account": acct, "days": added, "snapshots": snaps, "since": since}
-    return list(out.values())
+                    snap = clean_snapshot(doc)
+                    if snap is not None:
+                        acct["snapshots"].setdefault(day.group(1), snap)
+    except ZIP_ERRORS as e:
+        raise TransferError(f"{path} could not be read as a Steamshot export: {e}") from e
+    return found
+
+
+def _import_zip(data_dir, path, only=None):
+    found = _read_zip(path, only)
+    if not found:
+        raise TransferError(f"{path} has no Steamshot data" + (f" for account {only}" if only else ""))
+    out = []
+    for acct, got in sorted(found.items()):
+        base = account_dir(data_dir, acct)
+        snaps = 0
+        for day, doc in sorted(got["snapshots"].items()):
+            target = os.path.join(base, "snapshots", f"{day}.json")
+            if not os.path.exists(target):
+                write_json(target, doc)
+                snaps += 1
+        added, since = (0, None)
+        if got["history"] is not None:
+            added, since = _merge_into(data_dir, acct, got["history"])
+        for fname, doc, clean in (("names.json", got["names"], clean_names), ("art.json", got["art"], clean_art)):
+            if doc:  # caches: what is already here wins
+                cpath = os.path.join(base, fname)
+                write_json(cpath, {**doc, **clean(read_json(cpath, {}))})
+        out.append({"account": acct, "days": added, "snapshots": snaps, "since": since})
+    return out

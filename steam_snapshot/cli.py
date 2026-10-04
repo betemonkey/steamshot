@@ -29,7 +29,9 @@ def check_updates(cfg):
 def cmd_snapshot(cfg, args):
     try:
         s = snapshot.take(cfg)
-    except snapshot.SnapshotError as e:
+    except Exception as e:  # a scheduled run has no console: the log is all there is
+        if not isinstance(e, snapshot.SnapshotError):
+            e = f"{type(e).__name__}: {e}"
         snapshot.log_line(cfg["data_dir"], f"FAILED: {e}")
         print(f"snapshot failed: {e}", file=sys.stderr)
         check_updates(cfg)  # an update may be the fix
@@ -63,7 +65,8 @@ def cmd_serve(cfg, args):
     if args.open:
         webbrowser.open(url)
     restart = threading.Event()
-    threading.Thread(target=watch_for_update, args=(cfg, httpd, restart), daemon=True).start()
+    if not getattr(args, "demo", False):  # the demo is a sandbox: no git, no update.json
+        threading.Thread(target=watch_for_update, args=(cfg, httpd, restart), daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
@@ -101,9 +104,11 @@ def say(text):
 
 def relaunch():
     """Start this same command again on the updated code, without --open (the
-    browser tab is already there and reloads itself)."""
-    argv = [sys.executable, "-m", "steam_snapshot", *(a for a in sys.argv[1:] if a != "--open")]
+    browser tab is already there and reloads itself). It runs from the project
+    folder, so `-m steam_snapshot` is found wherever the first one started."""
+    argv = [sys.executable, "-m", "steam_snapshot", *absolute_paths(a for a in sys.argv[1:] if a != "--open")]
     if sys.platform != "win32":
+        os.chdir(config.PROJECT_DIR)
         os.execv(sys.executable, argv)
     # os.execv is unreliable on Windows, so start a new process. It keeps the
     # terminal if there is one; a pipe would close when this process exits.
@@ -113,8 +118,24 @@ def relaunch():
         console = False
     quiet = {} if console else {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL,
                                 "stderr": subprocess.DEVNULL}
-    subprocess.Popen(argv, **quiet)
+    subprocess.Popen(argv, cwd=config.PROJECT_DIR, **quiet)
     return 0
+
+
+def absolute_paths(args):
+    """The command line with --config / --data-dir values made absolute, for
+    a restart from another folder."""
+    out, path_next = [], False
+    for a in args:
+        if path_next:
+            a, path_next = os.path.abspath(a), False
+        elif a in ("--config", "--data-dir"):
+            path_next = True
+        elif a.startswith(("--config=", "--data-dir=")):
+            key, val = a.split("=", 1)
+            a = f"{key}={os.path.abspath(val)}"
+        out.append(a)
+    return out
 
 
 def cmd_doctor(cfg, args):
@@ -191,6 +212,12 @@ def pythonw():
     return exe
 
 
+def ps_quote(s):
+    """A PowerShell single-quoted string: ' doubles, nothing else is special,
+    so a folder name can never turn into a second command."""
+    return "'" + str(s).replace("'", "''") + "'"
+
+
 def cmd_schedule(cfg, args):
     every = args.every
     if every < 5 or (every >= 60 and every % 60) or (every < 60 and 60 % every):
@@ -200,10 +227,11 @@ def cmd_schedule(cfg, args):
     project = config.PROJECT_DIR
     conf = cfg["_file"]
     if sys.platform == "win32":
+        # Windows paths cannot contain ", so "..." is safe inside the argument
         argument = "-m steam_snapshot" + (f' --config "{conf}"' if conf else "") + " snapshot"
         print("# Paste into PowerShell (no admin needed). Runs while you are logged in.")
-        print(f"$action = New-ScheduledTaskAction -Execute '{pythonw()}' "
-              f"-Argument '{argument}' -WorkingDirectory '{project}'")
+        print(f"$action = New-ScheduledTaskAction -Execute {ps_quote(pythonw())} "
+              f"-Argument {ps_quote(argument)} -WorkingDirectory {ps_quote(project)}")
         print("$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) "
               f"-RepetitionInterval (New-TimeSpan -Minutes {every})")
         print("$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable "
@@ -222,7 +250,7 @@ def cmd_schedule(cfg, args):
         cmd = (f"cd {shlex.quote(project)} && {shlex.quote(sys.executable)} -m steam_snapshot"
                + (f" --config {shlex.quote(conf)}" if conf else "") + " snapshot")
         print("# Run `crontab -e` and add this line:")
-        print(f"{when} {cmd} >/dev/null 2>&1")
+        print(f"{when} {cmd.replace('%', chr(92) + '%')} >/dev/null 2>&1")  # cron reads % as a newline
         print()
         print("# Each run appends one line to the log, so you can check it is firing:")
         print(f"#   tail {shlex.quote(os.path.join(cfg['data_dir'], snapshot.LOG_NAME))}")
@@ -243,7 +271,7 @@ def cmd_demo(cfg, args):
     print(f"demo data: {args.days} days of invented snapshots in {acct}")
     if args.no_serve:
         return 0
-    args.data_dir, args.host, args.port = target, None, args.port
+    args.data_dir, args.host, args.port, args.demo = target, None, args.port, True
     return cmd_serve(cfg, args)
 
 

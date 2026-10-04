@@ -54,14 +54,20 @@ def disk_version():
 
 def find_git():
     """git on PATH, or where Git for Windows installs it (its installer can
-    leave it off PATH, and a scheduled task may see a shorter PATH)."""
-    found = shutil.which("git")
-    if found or sys.platform != "win32":
-        return found
+    leave it off PATH, and a scheduled task may see a shorter PATH).
+
+    Not shutil.which on Windows: that looks in the current folder first, so a
+    git.exe sitting in Downloads would run whenever the tool started there."""
+    if sys.platform != "win32":
+        return shutil.which("git")
+    dirs = [d for d in os.environ.get("PATH", "").split(os.pathsep) if os.path.isabs(d)]
     for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)"),
                  os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs")):
-        cand = os.path.join(base or "", "Git", "cmd", "git.exe")
-        if base and os.path.isfile(cand):
+        if base and os.path.isabs(base):
+            dirs.append(os.path.join(base, "Git", "cmd"))
+    for d in dirs:
+        cand = os.path.join(d, "git.exe")
+        if os.path.isfile(cand):
             return cand
     return None
 
@@ -71,9 +77,8 @@ def is_checkout():
 
 
 def latest_version(timeout=10):
-    """The version on main: via git when this is a checkout (works for a
-    private repo, with the credentials it was cloned with), otherwise a plain
-    download from GitHub (public repo only)."""
+    """The version on main: via git when this is a checkout, otherwise a
+    plain download from GitHub."""
     if is_checkout():
         r = _git(["fetch", "--quiet", "origin", "main"], timeout=60)
         if r.returncode:
@@ -92,7 +97,8 @@ def latest_version(timeout=10):
 
 def _git(args, timeout=30):
     # never prompt for a login: this runs unattended, often without a console
-    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never"}
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never",
+           "GIT_SSH_COMMAND": os.environ.get("GIT_SSH_COMMAND") or "ssh -o BatchMode=yes"}
     kw = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
     return subprocess.run([find_git() or "git", *args], cwd=config.PROJECT_DIR, capture_output=True,
                           text=True, timeout=timeout, env=env, **kw)
