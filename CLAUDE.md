@@ -39,6 +39,12 @@ There's no linter or formatter config. The code has `# noqa: E402/E731` markers,
 - Lookup order: `--config`, then `$STEAM_SNAPSHOT_CONFIG`, then `<repo>/config.toml`, then built-in defaults. A relative `data_dir` resolves against the config file's folder.
 - Unknown sections or keys are a hard `ConfigError`. **Adding a config key means updating `DEFAULTS`, `config.example.toml` and the README table together.** `test_example_config_is_valid` loads the example file.
 
+## Commits (public repo)
+
+- The repo is public and its history was scrubbed of personal details before release. Commit as `steam-snapshot <steam-snapshot@example.invalid>` (set it with `git config user.name/user.email` in a fresh clone; never the owner's own identity). A `Co-Authored-By: Claude ... <noreply@anthropic.com>` line is fine.
+- No `Claude-Session:` links, and no names or nicknames of the owner, in commit messages or files ("the owner picked", not a name). No SteamIDs, IPs, hostnames or paths from the owner's machines either.
+- Work on `main` directly (installs follow `main`); never force-push it (branch protection blocks that anyway), and delete any working branch once it's merged.
+
 ## Invariants (easy to break)
 
 - Never write anything under the Steam folder. `steamfiles` only reads.
