@@ -924,7 +924,7 @@ function tilesView(f) {
   out.push(`<div class="tile t-weeks"><div class="q">Hours per week</div><svg id="weeks" preserveAspectRatio="none" role="img" aria-label="Hours played per week, last 8 weeks"></svg></div>`);
   out.push(nextTile(f));
   out.push(`<div class="tile t-backlog"><div class="q">Never played</div><div class="big">${f.never.length}</div>
-    ${state.options.images && f.never.length ? `<div class="stack">${f.never.slice(0, 5).map(g => `<img alt="${esc(g.name)}" title="${esc(g.name)}" src="${artUrl(g.appid, "library_600x900.jpg")}" onerror="this.onerror=null;this.src='${artUrl(g.appid, "header.jpg")}'">`).join("")}</div>`
+    ${state.options.images && f.never.length ? `<div class="stack">${f.never.slice(0, 5).map(g => `<img alt="${esc(g.name)}" title="${esc(g.name)}" src="${artUrl(g.appid, "library_600x900.jpg")}" onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src='${artUrl(g.appid, "header.jpg")}'}\">`).join("")}</div>`
       : `<div class="foot">${f.never.length ? esc(f.never.slice(0, 3).map(g => g.name).join(", ")) + (f.never.length > 3 ? " and more" : "") : "Everything has been played"}</div>`}</div>`);
   const big = f.inst[0];
   out.push(`<div class="tile t-disk"><div class="q">Installed</div><div class="big">${fmtBytes(f.diskBytes) || "0 GB"}</div>
@@ -1174,7 +1174,7 @@ function drawWall(games) {
   if (el.dataset.key === key) return;  // same games: keep the images already loaded
   el.dataset.key = key;
   el.innerHTML = Array.from({length: 48}, (_, i) => src[(i * 7 + Math.floor(i / src.length)) % src.length])
-    .map(g => `<img alt="" loading="lazy" src="${artUrl(g.appid, "library_600x900.jpg")}" onerror="this.onerror=null;this.src='${artUrl(g.appid, "header.jpg")}'">`).join("");
+    .map(g => `<img alt="" loading="lazy" src="${artUrl(g.appid, "library_600x900.jpg")}" onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src='${artUrl(g.appid, "header.jpg")}'}\">`).join("");
 }
 
 // ---------- Year in review ----------
@@ -1255,7 +1255,7 @@ function upDown(a, b, fmt = x => x) {
 const longDate = iso => fmtDay(iso, {day: "numeric", month: "long"});
 const hrs = m => fmtH(m) + " h";
 function capImg(appid) {
-  return state.options.images ? `<img alt="" src="${artUrl(appid, "capsule_231x87.jpg")}" onerror="this.onerror=null;this.src='${artUrl(appid, "header.jpg")}'">` : "";
+  return state.options.images ? `<img alt="" src="${artUrl(appid, "capsule_231x87.jpg")}" onerror="if(this.dataset.f){this.remove()}else{this.dataset.f=1;this.src='${artUrl(appid, "header.jpg")}'}\">` : "";
 }
 
 function yirSlides(Y) {

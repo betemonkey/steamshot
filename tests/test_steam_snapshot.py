@@ -318,6 +318,11 @@ class TransferTests(TempDir):
         self.assertEqual(res[0]["days"], 1)
         h = snapshot.read_json(os.path.join(self.tmp, "d", "76561198000000001", "history.json"))
         self.assertEqual(h["days"], {"2026-01-02": {"620": 45}})
+        # a BOM (common from Windows tools) is fine; the earlier day fills in before "since"
+        bom = os.path.join(self.tmp, "bom.json")
+        with open(bom, "w", encoding="utf-8-sig") as fh:
+            json.dump({"days": {"2025-12-31": {"620": 10}}}, fh)
+        self.assertEqual(transfer.import_file(os.path.join(self.tmp, "d"), bom, "76561198000000001")[0]["days"], 1)
 
     def test_zip_cannot_write_outside_the_data_folder(self):
         path = os.path.join(self.tmp, "evil.zip")

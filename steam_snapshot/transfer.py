@@ -136,7 +136,7 @@ def import_file(data_dir, path, account=None):
     if zipfile.is_zipfile(path):
         return _import_zip(data_dir, path, account)
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8-sig") as fh:  # -sig: Windows tools often add a BOM
             doc = json.load(fh)
     except (OSError, ValueError) as e:
         raise TransferError(f"{path} is neither a Steamshot export (.zip) nor a JSON history file: {e}") from e
