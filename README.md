@@ -158,6 +158,16 @@ python -m steam_snapshot serve --open
 The dashboard runs while that terminal is open. Start it again whenever you want to look.
 The snapshots keep being taken in the background either way.
 
+**Desktop shortcut (Windows):** to open the dashboard from the desktop with the Steamshot icon,
+run this in PowerShell from the project folder:
+
+```powershell
+"[InternetShortcut]`r`nURL=http://127.0.0.1:8765/`r`nIconFile=$PWD\assets\steamshot.ico`r`nIconIndex=0" |
+  Set-Content "$([Environment]::GetFolderPath('Desktop'))\Steamshot.url" -Encoding ascii
+```
+
+The shortcut only opens the page, so the dashboard has to be running.
+
 ### Updating
 
 Steamshot updates itself. Every 6 hours the scheduled snapshot (and the dashboard, while

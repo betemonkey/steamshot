@@ -5,6 +5,7 @@ data folder, answers GET only, and binds to 127.0.0.1 unless the config says
 otherwise - your playtime stays on your machine.
 
   GET /                          the dashboard
+  GET /favicon.ico, /icon.svg    the Steamshot icon (from assets/)
   GET /api/accounts              accounts that have snapshots
   GET /api/snapshots?account=ID  stored days with headline numbers
   GET /api/snapshot?account=ID&date=YYYY-MM-DD   one snapshot (latest if no date)
@@ -18,7 +19,6 @@ at 127.0.0.1 (DNS rebinding) cannot read the data.
 """
 import ipaddress
 import json
-import mimetypes
 import os
 import re
 import socket
@@ -31,6 +31,16 @@ from . import __version__
 from .snapshot import clean_art, read_json, snapshot_dates
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
+# the only files served: a fixed list, so no request path ever reaches the disk.
+# Types are spelled out (mimetypes reads the Windows registry, which varies).
+STATIC = {
+    "/": (os.path.join(WEB_DIR, "index.html"), "text/html; charset=utf-8"),
+    "/index.html": (os.path.join(WEB_DIR, "index.html"), "text/html; charset=utf-8"),
+    "/favicon.ico": (os.path.join(ASSETS_DIR, "steamshot.ico"), "image/x-icon"),
+    # the bold variant: a browser tab draws it at 16-32 px
+    "/icon.svg": (os.path.join(ASSETS_DIR, "steamshot-small.svg"), "image/svg+xml"),
+}
 ACCOUNT_RE = re.compile(r"\A[0-9]{1,20}\Z")
 DATE_RE = re.compile(r"\A[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
 # the page is one self-contained file; images come from Steam's CDN only
@@ -193,8 +203,8 @@ class Handler(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
         account = q.get("account", "")
         day = q.get("date")
-        if url.path in ("/", "/index.html"):
-            return self.static("index.html")
+        if url.path in STATIC:
+            return self.static(*STATIC[url.path])
         if url.path == "/api/accounts":
             return self.send(200, {"accounts": self.data.accounts(),
                                    "options": self.data.options,
@@ -221,16 +231,12 @@ class Handler(BaseHTTPRequestHandler):
         from . import update
         return update.status(self.cfg)
 
-    def static(self, name):
-        path = os.path.join(WEB_DIR, name)
+    def static(self, path, ctype):
         try:
             with open(path, "rb") as fh:
                 body = fh.read()
         except OSError:
             return self.send(404, {"error": "not found"})
-        ctype = mimetypes.guess_type(name)[0] or "application/octet-stream"
-        if ctype.startswith("text/"):
-            ctype += "; charset=utf-8"
         self.send(200, body, ctype)
 
 

@@ -472,6 +472,15 @@ class HardeningTests(TempDir):
         self.assertEqual(r.getheader("Referrer-Policy"), "no-referrer")
         self.assertEqual(self.request(port, "/api/snapshot?account=1%0A")[0].status, 400)
 
+    def test_icon_is_served(self):
+        port = self.serve()
+        r, body = self.request(port, "/favicon.ico")
+        self.assertEqual((r.status, r.getheader("Content-Type"), body[:4]), (200, "image/x-icon", b"\x00\x00\x01\x00"))
+        r, body = self.request(port, "/icon.svg")
+        self.assertEqual((r.status, r.getheader("Content-Type")), (200, "image/svg+xml"))
+        self.assertTrue(body.startswith(b"<svg"))
+        self.assertEqual(self.request(port, "/steamshot.svg")[0].status, 404)  # only the fixed list
+
     def test_a_malformed_snapshot_does_not_take_the_server_down(self):
         snapshot.write_json(os.path.join(self.tmp, "1", "snapshots", "2026-01-01.json"),
                             {"games": "abc", "account": "x"})
