@@ -162,21 +162,34 @@ def cmd_doctor(cfg, args):
         print("  The configured account has not logged in on this machine.")
         return 1
     print("    (* = the account a snapshot will read)")
+    online = cfg["online"]
+    owned_apps, owned_msg = None, 'not set (optional, see "Exact ownership" in the README)'
+    if online["steam_api_key"]:
+        if not online["enabled"]:
+            owned_msg = "set, but unused: [online] enabled = false"
+        else:
+            from . import store
+            try:
+                owned_apps = store.owned_games(chosen["steamid64"], online["steam_api_key"])
+                owned_msg = f"set, works: {len(owned_apps)} owned games"
+            except store.StoreError as e:
+                owned_msg = f"set, but the check failed: {e}"
     games, src = steamfiles.read_library(root, chosen, cfg["snapshot"]["hide_appids"],
-                                         cfg["snapshot"]["include_unowned"])
+                                         cfg["snapshot"]["include_unowned"], owned_apps)
     print("  Sources")
     print(f"    {ok(src['localconfig'])} playtime         userdata/.../localconfig.vdf")
     print(f"    {ok(src['appinfo'])} names + types    appcache/appinfo.vdf")
     print(f"    {ok(src['packageinfo'])} licences         appcache/packageinfo.vdf"
           + ("" if src["packageinfo"] else "  (ownership not filtered)"))
     print(f"    {ok(src['collections'])} collections      userdata/.../cloudstorage")
+    print(f"  API key      {owned_msg}")
+    print(f"  Ownership    {src['ownership']}")
     print(f"    {ok(src['installedApps'])} installed        {src['installedApps']} games in "
           f"{src['libraryFolders']} library folder(s)")
     hours = sum(g["minutes"] for g in games) / 60
     unnamed = sum(1 for g in games if not g["name"])
     print(f"  Library      {len(games)} games, {hours:,.0f} h"
           + (f" ({unnamed} names to look up online)" if unnamed else ""))
-    online = cfg["online"]
     if not online["enabled"]:
         print("  Online       off - no network calls, no wishlist")
     elif online["wishlist"]:

@@ -442,8 +442,12 @@ def parse_installed(dirs):
 
 # ---------- the whole library ----------
 
-def read_library(root, account, hide_appids=(), include_unowned=False):
+def read_library(root, account, hide_appids=(), include_unowned=False, owned_apps=None):
     """Everything readable about one account's library, as plain dicts.
+
+    owned_apps: the account's owned app ids from the Steam Web API (optional,
+    see store.owned_games). When given it decides ownership instead of the
+    licence cache, which can't tell refunds and Steam Family games apart.
 
     Returns (games, sources) where sources says which files were readable -
     shown by `doctor` and stored in the snapshot so a gap can be explained.
@@ -471,6 +475,7 @@ def read_library(root, account, hide_appids=(), include_unowned=False):
         owned_usable = False
     else:
         owned_usable = bool(owned)
+    from_api = bool(owned_apps)
 
     games = []
     for appid in sorted(candidates):
@@ -484,7 +489,10 @@ def read_library(root, account, hide_appids=(), include_unowned=False):
             game["bytes"] = installed[appid]
         # only assert ownership when the licence list parsed and looks like
         # this account's; an installed game is owned whatever the cache says
-        if owned_usable:
+        if from_api:
+            # exact: an installed family-shared game is not owned
+            game["owned"] = appid in owned_apps
+        elif owned_usable:
             game["owned"] = appid in owned or appid in installed
         if collections.get(appid):
             game["collections"] = collections[appid]
@@ -500,6 +508,7 @@ def read_library(root, account, hide_appids=(), include_unowned=False):
         "localconfig": bool(played),
         "appinfo": bool(info),
         "packageinfo": owned_usable,
+        "ownership": "api" if from_api else ("licence-cache" if owned_usable else "unknown"),
         "collections": bool(collections or hidden or favourite),
         "installedApps": len(installed),
         "libraryFolders": len(library_dirs(root)),

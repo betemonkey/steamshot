@@ -30,7 +30,8 @@ keep_days = 0
 include_unowned = false
 
 # App ids to always leave out, e.g. a Steam Family shared game you don't want
-# counted as yours. The app id is the number in the game's store URL.
+# counted as yours (or set [online] steam_api_key and they drop out by
+# themselves). The app id is the number in the game's store URL.
 hide_appids = []
 
 [online]
@@ -46,6 +47,16 @@ wishlist = true
 # Store region and language for names and release dates.
 country = "US"
 language = "english"
+
+# Optional: your own Steam Web API key, for exact ownership. Without it (the
+# default) ownership comes from Steam's local licence cache, which still counts
+# refunded games and games borrowed through Steam Family. With it, the list of
+# games you own comes from Steam itself (IPlayerService/GetOwnedGames; free
+# games count once you've played them). Get a key at
+# https://steamcommunity.com/dev/apikey (any domain name, e.g. localhost).
+# Keep this file private: the key is yours alone. It is never logged or written
+# into snapshots. The STEAM_SNAPSHOT_API_KEY environment variable overrides it.
+steam_api_key = ""
 
 [dashboard]
 # 127.0.0.1 keeps the dashboard on this computer. Use "0.0.0.0" to open it to

@@ -357,8 +357,10 @@ def take(cfg, now=None):
         raise SnapshotError("no Steam account found (or the configured one has never "
                             "logged in on this machine) - run `doctor`")
     snap_cfg = cfg["snapshot"]
+    notes = []
+    owned_apps = fetch_owned(cfg, account, notes)
     games, sources = steamfiles.read_library(
-        root, account, snap_cfg["hide_appids"], snap_cfg["include_unowned"])
+        root, account, snap_cfg["hide_appids"], snap_cfg["include_unowned"], owned_apps)
     if not sources["localconfig"] or not games:
         raise SnapshotError("no games could be read - refusing to write an empty snapshot")
 
@@ -367,12 +369,27 @@ def take(cfg, now=None):
     if not lock:
         raise SnapshotError("another snapshot run is in progress")
     try:
-        return _write(cfg, now, today, account, games, sources)
+        return _write(cfg, now, today, account, games, sources, notes)
     finally:
         release_lock(lock)
 
 
-def _write(cfg, now, today, account, games, sources):
+def fetch_owned(cfg, account, notes):
+    """Owned app ids from the Steam Web API when the optional key is set and
+    online calls are allowed; None otherwise or when the call fails (the
+    licence cache decides then, as without a key)."""
+    online = cfg["online"]
+    if not (online["enabled"] and online["steam_api_key"]):
+        return None
+    from . import store
+    try:
+        return store.owned_games(account["steamid64"], online["steam_api_key"])
+    except store.StoreError as e:
+        notes.append(f"owned games: {e}; used the licence cache instead")
+        return None
+
+
+def _write(cfg, now, today, account, games, sources, notes=None):
     data_dir, snap_cfg = cfg["data_dir"], cfg["snapshot"]
     acct_dir = account_dir(data_dir, account["steamid64"])
     # a dated-in-the-future file (an odd import) is never "the previous run"
@@ -381,7 +398,8 @@ def _write(cfg, now, today, account, games, sources):
     if not isinstance(previous, dict):
         previous = None
 
-    notes, wishlist, wl_status = [], [], "off"
+    notes = list(notes or [])
+    wishlist, wl_status = [], "off"
     online = cfg["online"]
     if online["enabled"]:
         resolve_names(games, acct_dir, online, notes)

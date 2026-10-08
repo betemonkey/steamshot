@@ -5,9 +5,12 @@ config.toml in the project folder. With no file at all the defaults below
 apply, which is a working setup for one Steam account on one machine.
 """
 import os
+import re
 import tomllib
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+API_KEY_ENV = "STEAM_SNAPSHOT_API_KEY"
+API_KEY_RE = re.compile(r"\A[0-9A-Fa-f]{32}\Z")
 
 DEFAULTS = {
     "steam": {
@@ -25,6 +28,7 @@ DEFAULTS = {
         "wishlist": True,
         "country": "US",
         "language": "english",
+        "steam_api_key": "",
     },
     "dashboard": {
         "host": "127.0.0.1",
@@ -102,6 +106,14 @@ def load(explicit=None):
         raise ConfigError("[snapshot] keep_days must be 0 (keep everything) to 36500")
     if not 1 <= cfg["dashboard"]["port"] <= 65535:
         raise ConfigError("[dashboard] port must be 1-65535")
+    # optional Steam Web API key: the environment wins over the file. The
+    # message never repeats the value - it is a secret.
+    key = os.environ.get(API_KEY_ENV, "").strip() or cfg["online"]["steam_api_key"].strip()
+    if key and not API_KEY_RE.match(key):
+        raise ConfigError("[online] steam_api_key (or $" + API_KEY_ENV + ") is not a Steam Web "
+                          "API key: it should be 32 letters and digits, from "
+                          "https://steamcommunity.com/dev/apikey")
+    cfg["online"]["steam_api_key"] = key
     account = cfg["steam"]["account"].strip()
     if account != "auto" and not (account.isascii() and account.isdigit() and len(account) <= 20):
         raise ConfigError('[steam] account must be "auto", a SteamID64 or an account id')

@@ -5,7 +5,7 @@ Steamshot (`steam_snapshot` package) takes scheduled snapshots of a Steam librar
 ## Commands (Windows dev box: use `py -3`, not `python`)
 
 ```powershell
-py -3 -m unittest discover tests                          # full suite, offline, ~1s (verified: 35 tests)
+py -3 -m unittest discover tests                          # full suite, offline, ~1s (verified: 65 tests, ~25s)
 py -3 -m unittest tests.test_steam_snapshot.ConfigTests   # one class (verified)
 py -3 -m steam_snapshot demo --open                       # invented data in ./demo-data + dashboard on :8765
 py -3 -m steam_snapshot demo --no-serve --data-dir <dir>  # just generate demo data (verified)
@@ -23,7 +23,7 @@ There's no linter or formatter config. The code has `# noqa: E402/E731` markers,
 - `cli.py`: argparse subcommands (`snapshot serve open shortcut doctor schedule demo init export import`). `open` checks `/api/version` for a `Server: steam-snapshot/` header (proxy-free opener) before starting a second server. Each `cmd_*` takes `(cfg, args)`. Exit codes: 1 = runtime failure, 2 = config error.
 - `config.py`: merges TOML over `DEFAULTS`. `PROJECT_DIR` is the repo root. Adds `cfg["data_dir"]` (absolute) and `cfg["_file"]`.
 - `steamfiles.py`: every Steam parser: text VDF (`localconfig.vdf`, `loginusers.vdf`, `.acf`), binary VDF (`appinfo.vdf` v28/v29, `packageinfo.vdf`), and the collections JSON in cloudstorage. `read_library()` combines them into `(games, sources)`.
-- `store.py`: keyless Steam web endpoints (`IStoreBrowseService/GetItems`, `IWishlistService/GetWishlist`, `appdetails`) via urllib. Raises `StoreError`. `art_of()` turns GetItems `include_assets` into artwork URLs: Steam files newer art under a per-image hash, so the plain `steam/apps/<id>/header.jpg` is a 404 for many games. URLs are pattern-checked because they go into the page's HTML.
+- `store.py`: keyless Steam web endpoints (`IStoreBrowseService/GetItems`, `IWishlistService/GetWishlist`, `appdetails`) via urllib, plus the one keyed call `owned_games()` (`IPlayerService/GetOwnedGames`, `include_played_free_games=1`) used only when the optional `[online] steam_api_key` is set. Raises `StoreError`. `art_of()` turns GetItems `include_assets` into artwork URLs: Steam files newer art under a per-image hash, so the plain `steam/apps/<id>/header.jpg` is a 404 for many games. URLs are pattern-checked because they go into the page's HTML.
 - `snapshot.py`: `take(cfg, now=None)` is the scheduled run: read library, enrich (names/wishlist, plus `resolve_art()` into `art.json`: missing games now, every game again after 30 days), write `data/<steamid64>/snapshots/YYYY-MM-DD.json`, update `history.json`, prune past `keep_days`, append to `data/steam-snapshot.log`.
 - `transfer.py`: `export` (zip of `<id>/history.json`, `names.json`, `snapshots/*.json` plus a manifest) and `import` (that zip, or a bare history JSON). Merge rule: days on/after the local `since` and existing snapshot files are never overwritten; `last` is never imported (no fake spike on the next run). Zip members outside that exact layout are ignored (path-traversal safe, tested). Import is CLI-only on purpose: the server stays GET-only.
 - `update.py`: self-update. Throttled (6 h, state in `data/update.json`) check of the version on `origin/main` via `git fetch` (raw.githubusercontent.com fallback for non-checkouts), then `git pull --ff-only` only for a clean checkout of `main`. Finds Git for Windows even when it's not on PATH, never via the current folder (no `shutil.which` on Windows: binary planting), and never lets git or ssh prompt. Called from `cmd_snapshot` and from a watcher thread in `cmd_serve` that restarts the server (`relaunch()`) once the version on disk changes; the page polls `/api/version` and reloads when `running` changes.
@@ -46,6 +46,8 @@ There's no linter or formatter config. The code has `# noqa: E402/E731` markers,
 - Work on `main` directly (installs follow `main`); never force-push it (branch protection blocks that anyway), and delete any working branch once it's merged.
 
 ## Invariants (easy to break)
+
+- **The API key is optional and secret.** `[online] steam_api_key` defaults to `""` (off) and everything must keep working without it; `$STEAM_SNAPSHOT_API_KEY` overrides the file. It is validated in `config.load` (32 hex chars) and the error never echoes it. It must never reach the log, a snapshot, `names.json`/`art.json`, an export, a server response or `doctor` output (doctor prints only "set/not set"). `store.owned_games` scrubs it from error text. With a key, `read_library(owned_apps=...)` decides `owned` from the API (an installed family-shared game is *not* owned); on failure `snapshot.fetch_owned` returns None, the licence cache decides, and a note says so. `sources["ownership"]` is `api | licence-cache | unknown`.
 
 - Never write anything under the Steam folder. `steamfiles` only reads.
 - Parsers degrade, they don't raise. An unknown format returns "don't know" (empty result or `sources[x] = False`), and `take()` refuses to write an empty snapshot (`SnapshotError`) rather than recording a wiped library.

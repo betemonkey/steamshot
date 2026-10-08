@@ -20,6 +20,7 @@ from . import __version__
 
 GET_ITEMS = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/"
 GET_WISHLIST = "https://api.steampowered.com/IWishlistService/GetWishlist/v1/"
+GET_OWNED = "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/"
 APPDETAILS = "https://store.steampowered.com/api/appdetails"
 USER_AGENT = f"steam-snapshot/{__version__}"
 BATCH = 50
@@ -155,6 +156,39 @@ def release_of(item):
                 "date_year": str(d.year),
                 "date_month": f"{MONTHS[d.month - 1]} {d.year}"}.get(disp, "")
     return "", text or ("Coming soon" if coming else ""), coming
+
+
+def owned_games(steamid64, api_key):
+    """Set of app ids the account owns, from IPlayerService/GetOwnedGames.
+
+    Needs the user's own Web API key (optional, [online] steam_api_key). Unlike
+    the local licence cache it leaves out refunded games and games borrowed
+    through Steam Family. include_played_free_games=1 keeps the free-to-play
+    games that are really in the library (the ones that have been played);
+    without it they would all drop out. The key is a secret: no error raised
+    here carries the request URL.
+    """
+    q = urllib.parse.urlencode({"key": api_key, "steamid": str(steamid64),
+                                "include_appinfo": 0, "include_played_free_games": 1})
+    try:
+        data = get_json(f"{GET_OWNED}?{q}")
+    except StoreError as e:
+        msg = str(e)
+        if api_key in msg:  # belt and braces: never let the key into a log
+            msg = msg.replace(api_key, "<key>")
+        raise StoreError(f"GetOwnedGames: {msg}") from None
+    games = _dict(data.get("response")).get("games")
+    if not isinstance(games, list):
+        # an empty response is a private profile or a bad id, not "owns nothing"
+        raise StoreError("GetOwnedGames returned no game list")
+    out = set()
+    for g in games:
+        a = _dict(g).get("appid")
+        if isinstance(a, int) and not isinstance(a, bool) and 0 < a < 2 ** 32:
+            out.add(a)
+    if not out:
+        raise StoreError("GetOwnedGames returned an empty list")
+    return out
 
 
 def wishlist(steamid64):
