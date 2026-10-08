@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mockup: Year in review button</title>
 <style>
-/* The Year in review button with white text: which orange (Monkey, 4 Oct:
+/* The Year in review button with white text: which orange (the owner, 4 Oct:
    "maybe try this color b55b26 ? or suggest some orange alternatives").
    Ember tokens from web/index.html; the header row is copied from the page. */
 :root {
@@ -71,7 +71,7 @@ const OPTS = [
 document.getElementById("rows").innerHTML = OPTS.map(([k, c, name, sub]) => {
   const r = cr(c), cls = r >= 4.5 ? "ok" : "lo";
   return `<div class="row${k === "B" ? " pick" : ""}"><span class="k">${k}</span>
-    <div class="hdr"><span class="ttl">Steam snapshot<span>Bete Monkey</span></span>
+    <div class="hdr"><span class="ttl">Steam snapshot<span>Demo Player</span></span>
       <button class="yir-btn" style="--bg:${c}">${STAR}Year in review</button>
       <span class="switch"><button class="on">Shelf</button><button>Tiles</button></span><span class="sn">Snapshot</span></div>
     <div class="meta"><b>${c}</b><span class="${cls}">${r.toFixed(1)}:1 ${r >= 4.5 ? "passes" : "below 4.5"}</span></div>
