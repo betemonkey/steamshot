@@ -358,7 +358,8 @@ def take(cfg, now=None):
                             "logged in on this machine) - run `doctor`")
     snap_cfg = cfg["snapshot"]
     notes = []
-    owned_apps = fetch_owned(cfg, account, notes)
+    owned = fetch_owned(cfg, account, notes)
+    owned_apps = set(owned) if owned is not None else None
     games, sources = steamfiles.read_library(
         root, account, snap_cfg["hide_appids"], snap_cfg["include_unowned"], owned_apps)
     if not sources["localconfig"] or not games:
@@ -369,21 +370,33 @@ def take(cfg, now=None):
     if not lock:
         raise SnapshotError("another snapshot run is in progress")
     try:
-        return _write(cfg, now, today, account, games, sources, notes)
+        summary = _write(cfg, now, today, account, games, sources, notes)
+        if owned is not None:
+            # the "From your Steam profile" block (key only); its failures
+            # never cost the snapshot that was just written
+            from . import steamapi
+            try:
+                summary["steamapi"] = steamapi.update(
+                    account_dir(data_dir, account["steamid64"]), account["steamid64"],
+                    cfg["online"]["steam_api_key"], owned, summary["notes"],
+                    now.timestamp(), cfg["online"]["language"])
+            except OSError as e:
+                summary["notes"].append(f"profile block not written: {e}")
+        return summary
     finally:
         release_lock(lock)
 
 
 def fetch_owned(cfg, account, notes):
-    """Owned app ids from the Steam Web API when the optional key is set and
-    online calls are allowed; None otherwise or when the call fails (the
-    licence cache decides then, as without a key)."""
+    """{owned app id: details} from the Steam Web API when the optional key is
+    set and online calls are allowed; None otherwise or when the call fails
+    (the licence cache decides then, as without a key)."""
     online = cfg["online"]
     if not (online["enabled"] and online["steam_api_key"]):
         return None
     from . import store
     try:
-        return store.owned_games(account["steamid64"], online["steam_api_key"])
+        return store.owned_details(account["steamid64"], online["steam_api_key"])
     except store.StoreError as e:
         notes.append(f"owned games: {e}; used the licence cache instead")
         return None

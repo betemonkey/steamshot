@@ -520,6 +520,74 @@ dialog.yir-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
   main.fade { animation: none; }
   .cv .art { transition: none; }
 }
+
+/* ===== From your Steam profile (optional API key) ===== */
+/* device colours: the accent for the main device, then fixed hues that hold in light and dark */
+:root { --d-windows: var(--accent); --d-deck: #8a5cf6; --d-linux: #e0a12b; --d-mac: #9aa0a6; }
+.pf-dev { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; margin-top: 10px; }
+.pf-dev i, .pf-legend i { display: block; }
+.d-windows { background: var(--d-windows); } .d-deck { background: var(--d-deck); } .d-linux { background: var(--d-linux); }
+.d-mac { background: var(--d-mac); }
+/* hours from before per-device counting: hatched, not a colour, so it never reads as a device */
+.d-untracked { background: repeating-linear-gradient(135deg, var(--surface-2) 0 5px, var(--grid) 5px 10px); outline: 1px solid var(--border); outline-offset: -1px; }
+.pf-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 12.5px; color: var(--ink-2); }
+.pf-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.pf-legend i { width: 10px; height: 10px; border-radius: 3px; }
+.pf-legend b { color: var(--ink); font-weight: 600; }
+.pf-now { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding: 8px 14px 8px 8px;
+  background: var(--surface); border-radius: var(--radius); color: var(--ink); text-decoration: none; }
+.pf-now img { width: 116px; height: 43px; object-fit: cover; border-radius: 6px; flex: none; }
+.pf-now b { font-size: 15px; }
+.pf-now .sub { font-size: 13px; }
+.pf-now:hover b { text-decoration: underline; }
+.pf-live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--good); text-transform: uppercase; letter-spacing: .05em; }
+.pf-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); display: inline-block; }
+@media (prefers-reduced-motion: no-preference) { .pf-live i { animation: pf-pulse 2s ease-in-out infinite; } }
+@keyframes pf-pulse { 50% { opacity: .45; } }
+.pf-prof { display: grid; grid-template-columns: 1.1fr 1.3fr 1fr; gap: 28px; }
+.pf-prof .pf-col + .pf-col { border-left: 1px solid var(--border); padding-left: 28px; }
+.pf-col { min-width: 0; }
+.pf-col .q { color: var(--ink-2); font-size: 13px; }
+.q.pf-sub { margin-top: 14px; }
+.pf-p { margin: 12px 0 0; }
+.pf-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+.pf-achtop { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
+.pf-ring .bg { fill: none; stroke: var(--surface-2); stroke-width: 8; }
+.pf-ring .fg { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; }
+.pf-ring text { fill: var(--ink); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pf-close .r { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-top: 8px; font-size: 13px;
+  background: linear-gradient(var(--surface-2), var(--surface-2)) left bottom / 100% 5px no-repeat; }
+.pf-close .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-close .num { color: var(--ink-2); }
+.pf-close s { grid-column: 1 / -1; text-decoration: none; height: 5px; border-radius: 0 3px 3px 0; background: var(--accent); display: block; min-width: 2px; }
+.pf-unl { list-style: none; margin: 8px 0 0; padding: 0; }
+.pf-unl li { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.pf-unl li + li { border-top: 1px solid var(--border); }
+.pf-unl .ic { width: 34px; height: 34px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--accent-wash); color: var(--accent); overflow: hidden; }
+.pf-unl .ic svg { width: 18px; height: 18px; }
+.pf-unl .ic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pf-unl .t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pf-unl .t b, .pf-unl .t span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-unl .t span { color: var(--ink-2); font-size: 12.5px; }
+/* Tiles: one more row of three */
+.bento.has-prof { grid-template-areas: "hero hero m30 streak" "hero hero weeks weeks" "next backlog disk cols" "dev ach ach unl" "changes changes chart chart"; }
+.t-dev { grid-area: dev; } .t-ach { grid-area: ach; } .t-unl { grid-area: unl; }
+.t-ach .pf-col { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto 1fr; gap: 0 24px; }
+.t-ach .pf-col > .q:first-child { grid-column: 1 / -1; }
+.t-ach .pf-achtop { grid-column: 1; grid-row: 2 / span 3; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 150px; }
+.t-ach .pf-sub { grid-column: 2; grid-row: 2; margin-top: 8px; }
+.t-ach .pf-close, .t-ach > .pf-col > .empty { grid-column: 2; grid-row: 3; }
+.t-ach .pf-note { grid-column: 2; grid-row: 4; }
+.pf-hint { color: var(--muted); }
+@media (max-width: 900px) {
+  .pf-prof { grid-template-columns: 1fr; gap: 18px; }
+  .pf-prof .pf-col + .pf-col { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: 16px; }
+  .bento.has-prof { grid-template-areas: "hero hero" "hero hero" "m30 streak" "weeks weeks" "next backlog" "disk cols" "dev dev" "ach ach" "unl unl" "changes changes" "chart chart"; }
+}
+@media (max-width: 560px) {
+  .pf-now img { display: none; }
+  .t-ach .pf-col { display: block; }
+}
 </style>
 </head>
 <body>
@@ -585,7 +653,7 @@ const sum = a => a.reduce((x, y) => x + y, 0);
 
 const state = {accounts: [], options: {images: true}, account: null, snaps: [], snap: null, hist: null,
                view: "shelf", range: 30, sort: {key: "minutes", dir: -1}, q: "", col: "", chip: "", installed: false,
-               hidden: false, limit: 50, art: {}};
+               hidden: false, limit: 50, art: {}, profile: null, now: {}};
 
 function store(k, v) { try { v === undefined ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
 function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -749,8 +817,11 @@ async function boot() {
 
 async function loadAccount(id) {
   state.account = id;
-  [state.snaps, state.hist, state.art] = await Promise.all([api(`/api/snapshots?account=${id}`), api(`/api/history?account=${id}`),
-    api(`/api/art?account=${id}`).catch(() => ({}))]);  // art is optional: the plain paths still work for most games
+  [state.snaps, state.hist, state.art, state.profile] = await Promise.all([api(`/api/snapshots?account=${id}`), api(`/api/history?account=${id}`),
+    api(`/api/art?account=${id}`).catch(() => ({})),  // art is optional: the plain paths still work for most games
+    api(`/api/steamapi?account=${id}`).catch(() => null)]);  // only exists with the optional API key
+  state.now = {};
+  pollNowPlaying();
   const day = $("#day");
   day.innerHTML = state.snaps.slice().reverse().map((s, i) =>
     `<option value="${s.date}">${fmtDay(s.date, {day: "numeric", month: "short", year: "numeric"})}${i === 0 ? " (latest)" : ""}</option>`).join("");
@@ -878,6 +949,8 @@ function render() {
   if (src.collections === false) notes.push("no Steam collections found");
   (snap.notes || []).forEach(n => notes.push(n));
   if (notes.length) $("#foot").insertAdjacentHTML("beforeend", "<br>" + notes.map(esc).join(" · "));
+  if (!state.profile) $("#foot").insertAdjacentHTML("beforeend", `<br><span class="pf-hint">Achievements, hours per device and Now playing need the optional Steam Web API key: see the README.</span>`);
+  drawNow();
 }
 
 function rangeButtons() {
@@ -890,9 +963,94 @@ function changesSub(snap) {
   return snap.previous ? "compared with the snapshot of " + fmtDay(snap.previous.date, {weekday: "short", day: "numeric", month: "short"}) : "the first snapshot - changes show from the next one";
 }
 
+// ===== From your Steam profile (only with the optional API key) =====
+const DEV = [["windows", "Windows"], ["deck", "Steam Deck"], ["linux", "Linux"], ["mac", "macOS"], ["untracked", "Before per-device counting"]];
+const pctOf = (a, b) => b ? Math.round(a / b * 100) : 0;
+const TROPHY = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V17h3v3H8v-3h3v-2.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3V3zm0 4H6v1a2 2 0 0 0 1.2 1.8A5 5 0 0 1 7 8.4V7zm10 0v1.4c0 .5-.1 1-.2 1.4A2 2 0 0 0 18 8V7h-1z"/></svg>`;
+// achievement icons: the server only lets this exact shape through, the page checks again
+const ICON_OK = /^https:\/\/cdn\.akamai\.steamstatic\.com\/steamcommunity\/public\/images\/apps\/[0-9]{1,10}\/[0-9a-f]{40}\.(jpg|png)$/;
+function sinceUnix(t) {
+  const d = Math.floor((Date.now() - t * 1000) / DAY);
+  return d <= 0 ? "today" : d === 1 ? "yesterday" : d < 14 ? `${d} days ago` : d < 45 ? "a month ago" : d < 365 ? `${Math.round(d / 30)} months ago` : `${Math.round(d / 365)} ${d < 548 ? "year" : "years"} ago`;
+}
+function devBar(dev) {
+  const tot = sum(DEV.map(([k]) => dev[k] || 0)) || 1;
+  const segs = DEV.filter(([k]) => dev[k] > 0);
+  return `<div class="pf-dev" role="img" aria-label="${segs.map(([k, l]) => `${l} ${pctOf(dev[k], tot)}%`).join(", ")}">
+    ${segs.map(([k]) => `<i class="d-${k}" style="flex:${dev[k]}"></i>`).join("")}</div>
+    <div class="pf-legend">${segs.map(([k, l]) => `<span><i class="d-${k}"></i>${l} <b class="num">${pctOf(dev[k], tot)}%</b></span>`).join("")}</div>`;
+}
+function ring(p, size = 86) {
+  const r = size / 2 - 7, c = 2 * Math.PI * r;
+  return `<svg class="pf-ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${p}% of achievements">
+    <circle cx="${size / 2}" cy="${size / 2}" r="${r}" class="bg"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" class="fg"
+    stroke-dasharray="${(c * p / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})"/>
+    <text x="50%" y="50%" dy=".35em" text-anchor="middle">${p}%</text></svg>`;
+}
+function profileParts(f) {
+  const x = state.profile, a = x.achievements, nm = r => r.name || f.names[r.appid] || "App " + aid(r.appid);
+  const m2w = sum(x.twoWeeks.map(r => r.minutes));
+  const two = !m2w ? "Nothing played in the last 2 weeks."
+    : `<b class="num">${fmtH(m2w)} h</b> in the last 2 weeks${x.twoWeeks.length === 1 ? `, all of it ${esc(nm(x.twoWeeks[0]))}` : `, across ${x.twoWeeks.length} games`}.`;
+  const dev = `<div class="pf-col"><div class="q">Where you play</div>${devBar(x.devices)}<p class="pf-p">${two}</p>
+    ${x.devices.untracked ? `<p class="pf-note">Hours from before Steam counted per device show as their own part, not as a device.</p>` : ""}</div>`;
+  const close = x.closest.length ? `<div class="pf-close">${x.closest.map(r => `<div class="r"><span class="n" title="${esc(nm(r))}">${esc(nm(r))}</span>
+      <span class="num">${r.unlocked}/${r.total}</span><s style="width:${(r.unlocked / r.total * 100).toFixed(1)}%"></s></div>`).join("")}</div>
+      ${a.small ? `<p class="pf-note">Games with fewer than 10 achievements are left out, so a one-achievement game can't top the list.</p>` : ""}`
+    : `<p class="empty">No game is close to complete yet.</p>`;
+  const ach = `<div class="pf-col"><div class="q">Achievements</div>${a.total ? `<div class="pf-achtop">${ring(pctOf(a.unlocked, a.total))}
+    <div><b class="num">${a.unlocked.toLocaleString()}</b> of ${a.total.toLocaleString()} in the games you've played${a.complete ? `<br><span class="sub">${a.complete} ${a.complete === 1 ? "game" : "games"} at 100%</span>` : ""}</div></div>
+    <div class="q pf-sub">Closest to 100%</div>${close}` : `<p class="empty">No achievements counted yet. They fill in over the next few snapshots.</p>`}</div>`;
+  const unl = `<div class="pf-col"><div class="q">Latest unlocks</div>${x.latest.length ? `<ul class="pf-unl">${x.latest.map(u => `<li>
+    <span class="ic">${state.options.images && ICON_OK.test(u.icon) ? `<img alt="" src="${esc(u.icon)}" onerror="this.remove()">` : TROPHY}</span>
+    <span class="t"><b>${esc(u.name)}</b><span>${esc(u.game || f.names[u.appid] || "App " + aid(u.appid))} · ${sinceUnix(u.t)}</span></span></li>`).join("")}</ul>`
+    : `<p class="empty">Nothing unlocked yet.</p>`}</div>`;
+  return {dev, ach, unl};
+}
+function profileBlock(f) {
+  const p = profileParts(f);
+  return `<section><div class="h"><h2>From your Steam profile</h2><span class="sub">needs the optional API key</span></div>
+    <div class="panel pf-prof">${p.dev}${p.ach}${p.unl}</div></section>`;
+}
+function nowStrip() {
+  const n = state.now;
+  if (!n || !n.appid || !state.snap) return "";
+  const g = (state.snap.games || []).find(x => x.appid === n.appid);
+  const two = state.profile ? (state.profile.twoWeeks.find(r => r.appid === n.appid) || {}).minutes : 0;
+  return `<a class="pf-now" href="${storeUrl(n.appid)}" target="_blank" rel="noopener">
+    ${state.options.images ? `<img alt="" src="${artUrl(n.appid, "capsule_231x87.jpg")}" onerror="this.remove()">` : ""}
+    <span class="pf-live"><i></i>Playing now</span><b>${esc(n.name || (g && g.name) || "App " + aid(n.appid))}</b>
+    ${g ? `<span class="sub">${fmtH(g.minutes || 0)} h in total${two ? ` · ${fmtH(two)} h in the last 2 weeks` : ""}</span>` : ""}</a>`;
+}
+function drawNow() {
+  const el = $("#nowstrip");
+  if (el) el.innerHTML = nowStrip();
+}
+// asks the server once a minute while the page is visible, and only when the
+// profile block exists (the server asks Steam at most once a minute anyway)
+let nowTimer = null;
+function pollNowPlaying() {
+  clearTimeout(nowTimer);
+  if (!state.profile) return;
+  const acct = state.account;
+  const tick = async () => {
+    if (!document.hidden && acct === state.account) {
+      try {
+        const n = await api(`/api/nowplaying?account=${acct}`);
+        const was = state.now.appid;
+        state.now = n && /^[0-9]{1,10}$/.test(String(n.appid)) ? {appid: n.appid, name: String(n.name || "")} : {};
+        if (was !== state.now.appid) drawNow();
+      } catch (e) { /* the server restarts now and then: try again next minute */ }
+    }
+    if (acct === state.account) nowTimer = setTimeout(tick, 60000);
+  };
+  tick();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && state.profile) pollNowPlaying(); });
+
 // ===== Shelf: cover art first =====
 function shelfView(f) {
-  const out = [];
+  const out = [`<div id="nowstrip"></div>`];
   if (f.lead) {
     const plain = !state.options.images;
     out.push(`<div class="s-hero${plain ? " plain" : ""}"${plain ? "" : ` style="background-image:${heroBg(f.lead.appid)}"`}>
@@ -915,6 +1073,7 @@ function shelfView(f) {
       ${fact("Never played", nv.toLocaleString(), games ? Math.round(nv / games * 100) + "% of the library" : "")}
       ${fact("Installed", fmtBytes(f.diskBytes) || "0 GB", `${f.inst.length} games on disk`)}
     </div></section>`);
+  if (state.profile) out.push(profileBlock(f));
   // collections and changes share a panel, so an empty "changes" takes no room
   const nChanges = changeCount(f.games, f.prevGames);
   const tab = state.shelfTab === "changes" ? "changes" : "cols";
@@ -1038,9 +1197,13 @@ function tilesView(f) {
   const cols = collectionTotals(f.games).slice(0, 4), cmax = cols.length ? Math.max(cols[0][1].mins, 1) : 1;
   out.push(`<div class="tile t-cols"><div class="q">Hours by collection</div>${cols.map(([c, v]) =>
     `<div class="r" title="${esc(c)}: ${fmtH(v.mins)} h over ${v.n} games"><span>${esc(c)}</span><span class="num">${fmtH(v.mins)} h</span><s style="width:${(v.mins / cmax * 100).toFixed(1)}%"></s></div>`).join("")}</div>`);
+  if (state.profile) {
+    const p = profileParts(f);
+    out.push(`<div class="tile t-dev">${p.dev}</div><div class="tile t-ach">${p.ach}</div><div class="tile t-unl">${p.unl}</div>`);
+  }
   out.push(`<div class="tile t-changes changes"><div class="th"><span class="q">Changes, ${changesSub(f.snap)}</span></div>${changes(f.games, f.prevGames)}</div>`);
   out.push(`<div class="tile t-chart"><div class="th"><span class="q">Playtime per day, <span id="chart-sub"></span></span>${rangeButtons()}</div>${chartBlock()}</div>`);
-  return `<div class="bento">${out.join("")}</div>
+  return `<div id="nowstrip"></div><div class="bento${state.profile ? " has-prof" : ""}">${out.join("")}</div>
     <section><div class="h"><h2>Library</h2><span class="sub" id="lib-count"></span></div><div class="panel">${libraryTable(f.games)}</div></section>`;
 }
 function m30Foot(f) {

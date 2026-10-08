@@ -163,7 +163,7 @@ def cmd_doctor(cfg, args):
         return 1
     print("    (* = the account a snapshot will read)")
     online = cfg["online"]
-    owned_apps, owned_msg = None, 'not set (optional, see "Exact ownership" in the README)'
+    owned_apps, owned_msg = None, 'not set (optional, see "Optional API key" in the README)'
     if online["steam_api_key"]:
         if not online["enabled"]:
             owned_msg = "set, but unused: [online] enabled = false"

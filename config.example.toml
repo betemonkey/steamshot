@@ -52,7 +52,8 @@ language = "english"
 # default) ownership comes from Steam's local licence cache, which still counts
 # refunded games and games borrowed through Steam Family. With it, the list of
 # games you own comes from Steam itself (IPlayerService/GetOwnedGames; free
-# games count once you've played them). Get a key at
+# games count once you've played them), and the dashboard adds a "From your
+# Steam profile" block: hours per device, achievements, playing now. Get a key at
 # https://steamcommunity.com/dev/apikey (any domain name, e.g. localhost).
 # Keep this file private: the key is yours alone. It is never logged or written
 # into snapshots. The STEAM_SNAPSHOT_API_KEY environment variable overrides it.

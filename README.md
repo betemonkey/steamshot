@@ -14,7 +14,7 @@ release countdowns, and a searchable library.
 
 - **No API key, no login.** It reads the files the Steam client already keeps on disk.
   An API key is an optional extra, only for exact ownership (see
-  [Exact ownership](#exact-ownership-optional-api-key)).
+  [Optional API key](#optional-api-key-exact-ownership-and-your-steam-profile)).
 - **Read-only.** Nothing in your Steam folder is ever modified.
 - **Stays on your machine.** Snapshots are plain JSON files in a folder you choose. The
   dashboard listens on `127.0.0.1` only.
@@ -264,7 +264,7 @@ data in `./data`.
 | `[online]` | `enabled` | `true` | Allow keyless calls to Steam's public store API, and the update check. `false` = the snapshot and server make no network calls. The dashboard page still loads cover art from Steam's CDN unless `images = false`. |
 | | `wishlist` | `true` | Fetch your wishlist. Needs a public "Game details" privacy setting. |
 | | `country`, `language` | `"US"`, `"english"` | Store region and language for names and release dates. |
-| | `steam_api_key` | `""` | Optional. Your own Steam Web API key, for exact ownership (no refunds, no Steam Family games). Empty = off. See [Exact ownership](#exact-ownership-optional-api-key). |
+| | `steam_api_key` | `""` | Optional. Your own Steam Web API key, for exact ownership (no refunds, no Steam Family games) and the "From your Steam profile" block (hours per device, achievements, playing now). Empty = off. See [Optional API key](#optional-api-key-exact-ownership-and-your-steam-profile). |
 | `[dashboard]` | `host`, `port` | `127.0.0.1`, `8765` | Where the dashboard listens. |
 | | `images` | `true` | Load cover art from Steam's image CDN. |
 | `[updates]` | `check` | `true` | Look up the newest version on GitHub every 6 hours. Off when `[online] enabled = false`. |
@@ -277,7 +277,7 @@ environment variable, then `config.toml` in the project folder.
 account on the machine (and which one will be read), which data sources are readable,
 the size of the library, and whether your wishlist is visible. It changes nothing.
 
-### Exact ownership (optional API key)
+### Optional API key: exact ownership and your Steam profile
 
 Steam doesn't keep a list of what you own on disk, only a cache of licences
 (`packageinfo.vdf`). That cache still counts games you refunded and games a Steam Family
@@ -288,6 +288,23 @@ there are two fixes:
 - give Steamshot your own **Steam Web API key**. It then asks Steam for the games you
   actually own (`IPlayerService/GetOwnedGames`) and uses that instead of the cache.
   Free-to-play games count once you've played them, as on your Steam profile.
+
+With a key the dashboard also gets a **From your Steam profile** block (Shelf: under the
+playtime panel; Tiles: one more row):
+
+- **Where you play:** your hours split by Windows, Steam Deck, Linux and macOS. Steam only
+  started counting per device a few years ago; hours from before that are shown as their
+  own hatched part, not as a device. Plus your hours in the last two weeks.
+- **Achievements:** how many you've unlocked in the games you've played, the games
+  **closest to 100%** (only games with 10 or more achievements, so a one-achievement game
+  can't top the list), and your **latest unlocks** with their icons.
+- **Playing now:** a slim strip at the top while you're in a game. The page asks the
+  dashboard once a minute while it's open and visible, and the dashboard asks Steam at
+  most once a minute.
+
+Achievements cost one request per game, so they fill in gently: each snapshot asks about
+at most 25 games, played ones first, and later runs only ask again about games you've
+played since (or after a week). A big library takes a few snapshots to fill in.
 
 This is entirely optional; without a key everything works as before. To set it up:
 
@@ -300,10 +317,11 @@ This is entirely optional; without a key everything works as before. To set it u
    `Ownership  api`.
 
 The key stays in your local `config.toml` (which is in `.gitignore`). It is sent only to
-`api.steampowered.com` with that one request, and never written to the log, a snapshot,
-an export or the dashboard. If the call fails (Steam down, key revoked), the snapshot
-falls back to the licence cache and says so in its notes. Nothing is called with
-`[online] enabled = false`.
+`api.steampowered.com`, and never written to the log, a snapshot, an export or the
+dashboard. If the owned-games call fails (Steam down, key revoked), the snapshot falls
+back to the licence cache and says so in its notes, and the profile block keeps its last
+numbers. Nothing is called with `[online] enabled = false`. Without a key, the dashboard
+looks exactly as before, with one quiet line at the bottom pointing here.
 
 ## Scheduling
 
@@ -379,6 +397,10 @@ the one you used last. Both show the same data.
 - **Library:** every game as a cover. Filter by installed, never played or collection;
   search; sort by hours, last played, name or size.
 
+With the optional API key, a **From your Steam profile** block (hours per device,
+achievements, latest unlocks) and a **Playing now** strip appear too; see
+[Optional API key](#optional-api-key-exact-ownership-and-your-steam-profile).
+
 **Tiles** answers one question per tile: what you're mostly playing, hours in the last
 30 days, how many days in a row you've played, hours per week, the next wishlist
 release, games you've never played, disk space, and hours per collection. Below them
@@ -411,9 +433,9 @@ your network can then see your library, since the dashboard has no login.
 | | |
 |---|---|
 | **Read** (never written) | In the Steam folder: `userdata/<id>/config/localconfig.vdf`, `appcache/appinfo.vdf`, `appcache/packageinfo.vdf`, `steamapps/appmanifest_*.acf` (in every library folder), `userdata/<id>/config/cloudstorage/cloud-storage-namespace-1.json`, and the profile names from `config/loginusers.vdf`. Login names and saved-password flags in that file are not read. |
-| **Sent** (only with `[online] enabled = true`) | To Steam's public endpoints (`api.steampowered.com`, `store.steampowered.com`): app ids whose names Steam's local cache is missing, app ids to look up where each game's artwork lives (about once a month per game), your wishlist's app ids, and your SteamID64 for the wishlist request, along with the `country` and `language` settings and a `steam-snapshot/<version>` user agent. No cookies. No key either, unless you set the optional `steam_api_key`: then your key and SteamID64 go to `IPlayerService/GetOwnedGames` once per snapshot. Nothing else. To GitHub, unless `[updates] check = false`: a `git fetch` of this repo every 6 hours (or, for a copy that isn't a git checkout, one download of `steam_snapshot/__init__.py`). Nothing about your library. |
-| **Loaded by the dashboard** | Cover art from Steam's image CDN, unless `images = false`. That tells the CDN which games' art you view, like browsing the store does. The page sends no referrer, so it doesn't tell the CDN where the dashboard runs. |
-| **Stored** | `data/<steamid64>/snapshots/*.json`, `history.json` and `names.json`, plus `data/<steamid64>/art.json` (artwork addresses), `data/steam-snapshot.log`, `data/update.json` (the last update check) and, while a snapshot runs, `data/snapshot.lock`. A `history.json` that can't be read is never overwritten: it's renamed to `history.json.damaged-<time>` and a note goes in the log. Outside the data folder, only an update changes files: `git pull` in the project folder. |
+| **Sent** (only with `[online] enabled = true`) | To Steam's public endpoints (`api.steampowered.com`, `store.steampowered.com`): app ids whose names Steam's local cache is missing, app ids to look up where each game's artwork lives (about once a month per game), your wishlist's app ids, and your SteamID64 for the wishlist request, along with the `country` and `language` settings and a `steam-snapshot/<version>` user agent. No cookies. No key either, unless you set the optional `steam_api_key`: then your key and SteamID64 go to `IPlayerService/GetOwnedGames` once per snapshot, to `ISteamUserStats/GetPlayerAchievements` for up to 25 games per snapshot, to `ISteamUserStats/GetSchemaForGame` for the icons of your latest unlocks (about once a month per game), and, while the dashboard is open, to `ISteamUser/GetPlayerSummaries` at most once a minute (only the game being played is kept from its answer). Nothing else. To GitHub, unless `[updates] check = false`: a `git fetch` of this repo every 6 hours (or, for a copy that isn't a git checkout, one download of `steam_snapshot/__init__.py`). Nothing about your library. |
+| **Loaded by the dashboard** | Cover art (and, with the API key, achievement icons) from Steam's image CDN, unless `images = false`. That tells the CDN which games' art you view, like browsing the store does. The page sends no referrer, so it doesn't tell the CDN where the dashboard runs. |
+| **Stored** | `data/<steamid64>/snapshots/*.json`, `history.json` and `names.json`, plus `data/<steamid64>/art.json` (artwork addresses), with the API key `steamapi.json` (the profile block) and `steamapi-cache.json` (achievement counts per game; neither is exported, the next snapshot rebuilds them), `data/steam-snapshot.log`, `data/update.json` (the last update check) and, while a snapshot runs, `data/snapshot.lock`. A `history.json` that can't be read is never overwritten: it's renamed to `history.json.damaged-<time>` and a note goes in the log. Outside the data folder, only an update changes files: `git pull` in the project folder. |
 
 `config.toml`, `data/`, `demo-data/` and export zips are in `.gitignore`, so your library
 never ends up in a commit. If you point `data_dir` somewhere else inside the project
@@ -468,7 +490,7 @@ configured `host`, so a web page can't read it by pointing its own domain at you
   `doctor` shows when that happens.
 - **Steam Family:** a game shared through Steam Family looks owned. Add its app id to
   `hide_appids` if you don't want it counted, or set the optional `steam_api_key`
-  ([Exact ownership](#exact-ownership-optional-api-key)) and it drops out by itself.
+  ([Optional API key](#optional-api-key-exact-ownership-and-your-steam-profile)) and it drops out by itself.
 - **Dynamic collections** (collections built from a filter) only include games added to
   them by hand, because the filter can't be evaluated offline.
 - **Demos** can't be put into collections in Steam, so they show as their own "Demos" group.

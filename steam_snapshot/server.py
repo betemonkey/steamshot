@@ -11,6 +11,11 @@ otherwise - your playtime stays on your machine.
   GET /api/snapshot?account=ID&date=YYYY-MM-DD   one snapshot (latest if no date)
   GET /api/history?account=ID    playtime gained per day
   GET /api/art?account=ID        artwork URLs per app id
+  GET /api/steamapi?account=ID   the "From your Steam profile" block (optional
+                                 API key only; 404 without it)
+  GET /api/nowplaying?account=ID the game being played right now, {} if none
+                                 (optional API key only; asks Steam at most
+                                 once a minute per account)
   GET /api/version               running version and update status
 
 Requests must name this server in their Host header (an IP address,
@@ -24,11 +29,16 @@ import re
 import socket
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from . import __version__
 from .snapshot import clean_art, read_json, snapshot_dates
+from .demo import DEMO_ID, NOW_PLAYING as DEMO_NOW_PLAYING
+from .steamapi import SUMMARY as STEAMAPI_FILE, clean as clean_steamapi
+
+NOW_PLAYING_TTL = 60  # seconds: page polling can never multiply calls to Steam
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
@@ -146,6 +156,9 @@ class Data:
         return {a: {k: v for k, v in rec.items() if k != "t"}
                 for a, rec in cache.items() if len(rec) > 1}
 
+    def steamapi(self, account):
+        return clean_steamapi(self._load(os.path.join(self.data_dir, account, STEAMAPI_FILE)))
+
     def history(self, account):
         hist = _dict(self._load(os.path.join(self.data_dir, account, "history.json")))
         return {"since": hist.get("since"), "days": _dict(hist.get("days"))}
@@ -223,7 +236,42 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, self.data.history(account))
         if url.path == "/api/art":
             return self.send(200, self.data.art(account))
+        if url.path == "/api/steamapi":
+            block = self.data.steamapi(account)
+            return self.send(200, block) if block else self.send(404, {"error": "no profile block"})
+        if url.path == "/api/nowplaying":
+            return self.send(200, self.now_playing(account))
         self.send(404, {"error": "not found"})
+
+    # account -> (time asked, answer); shared by every request thread
+    _now_cache = {}
+    _now_lock = threading.Lock()
+
+    def now_playing(self, account):
+        """{"appid", "name"} or {}. Steam is asked only with the optional key,
+        online calls on, and for an account whose profile block exists (one
+        of ours, not any id a request names) - and at most once a minute."""
+        if account == DEMO_ID:  # invented data never reaches Steam
+            return dict(DEMO_NOW_PLAYING) if self.data.steamapi(account) else {}
+        online = (self.cfg or {}).get("online") or {}
+        key = online.get("steam_api_key")
+        if not (key and online.get("enabled")) or not self.data.steamapi(account):
+            return {}
+        now = time.monotonic()
+        with self._now_lock:
+            hit = self._now_cache.get(account)
+            if hit and now - hit[0] < NOW_PLAYING_TTL:
+                return hit[1]
+            # claim the slot before asking, so parallel requests don't all ask
+            self._now_cache[account] = (now, hit[1] if hit else {})
+        from . import store
+        try:
+            answer = store.now_playing(account, key)
+        except store.StoreError:
+            answer = {}
+        with self._now_lock:
+            self._now_cache[account] = (now, answer)
+        return answer
 
     def version(self):
         if not self.cfg:

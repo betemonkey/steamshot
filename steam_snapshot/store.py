@@ -7,7 +7,11 @@ lives on Steam's image server. None of these need an API key
 or a login. Every call is optional - with `[online] enabled = false` this
 module is never imported into a run's path and nothing leaves the machine.
 
-Only app ids and your public SteamID64 are ever sent.
+Only app ids and your public SteamID64 are ever sent - plus, when the
+optional key is set ([online] steam_api_key), the key itself to Steam's own
+Web API for: the owned-games list (exact ownership, hours per device, last
+two weeks), the account's achievements per game, achievement icons, and the
+game being played right now. The key never appears in an error raised here.
 """
 import json
 import re
@@ -21,6 +25,15 @@ from . import __version__
 GET_ITEMS = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/"
 GET_WISHLIST = "https://api.steampowered.com/IWishlistService/GetWishlist/v1/"
 GET_OWNED = "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/"
+GET_ACHIEVEMENTS = "https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/"
+GET_SCHEMA = "https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/"
+GET_SUMMARIES = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/"
+PLATFORMS = ("windows", "mac", "linux", "deck")
+# achievement icons: Steam serves the same path from several hosts; only this
+# shape is accepted, and it is rebuilt on the steamstatic host the page's CSP allows
+ICON_RE = re.compile(r"\Ahttps://[a-z0-9.-]+\.(?:steamstatic\.com|akamaihd\.net)"
+                     r"/steamcommunity/public/images/apps/([0-9]{1,10})/([0-9a-f]{40})\.(jpg|png)\Z")
+ICON_BASE = "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/"
 APPDETAILS = "https://store.steampowered.com/api/appdetails"
 USER_AGENT = f"steam-snapshot/{__version__}"
 BATCH = 50
@@ -36,7 +49,9 @@ MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 
 
 class StoreError(Exception):
-    pass
+    def __init__(self, msg, status=None):
+        super().__init__(msg)
+        self.status = status  # the HTTP status when Steam answered with an error
 
 
 def get_json(url, timeout=20):
@@ -51,7 +66,8 @@ def get_json(url, timeout=20):
             raise ValueError("response too large")
         data = json.loads(body.decode("utf-8", "replace"))
     except (urllib.error.URLError, OSError, ValueError, RecursionError) as e:
-        raise StoreError(f"{type(e).__name__}: {e}") from e
+        raise StoreError(f"{type(e).__name__}: {e}",
+                         getattr(e, "code", None) if isinstance(e, urllib.error.HTTPError) else None) from e
     if not isinstance(data, dict):
         raise StoreError(f"unexpected answer from {url.split('?')[0]}")
     return data
@@ -158,37 +174,129 @@ def release_of(item):
     return "", text or ("Coming soon" if coming else ""), coming
 
 
-def owned_games(steamid64, api_key):
-    """Set of app ids the account owns, from IPlayerService/GetOwnedGames.
+def keyed_json(label, url, params, api_key):
+    """get_json for a call that carries the key. The key is a secret: no
+    error raised here carries the request URL or the key."""
+    q = urllib.parse.urlencode({"key": api_key, **params})
+    try:
+        return get_json(f"{url}?{q}")
+    except StoreError as e:
+        msg = str(e)
+        if api_key in msg:  # belt and braces: never let the key into a log
+            msg = msg.replace(api_key, "<key>")
+        raise StoreError(f"{label}: {msg}", e.status) from None
+
+
+def _int(v):
+    return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else 0
+
+
+def owned_details(steamid64, api_key):
+    """{app id: {"name", "minutes", "lastPlayed", "minutes2w", "stats",
+    "platforms": {windows, mac, linux, deck}}} from IPlayerService/GetOwnedGames.
 
     Needs the user's own Web API key (optional, [online] steam_api_key). Unlike
     the local licence cache it leaves out refunded games and games borrowed
     through Steam Family. include_played_free_games=1 keeps the free-to-play
     games that are really in the library (the ones that have been played);
-    without it they would all drop out. The key is a secret: no error raised
-    here carries the request URL.
+    without it they would all drop out. One call gives ownership and the
+    per-device / last-two-weeks hours the dashboard's profile block shows.
     """
-    q = urllib.parse.urlencode({"key": api_key, "steamid": str(steamid64),
-                                "include_appinfo": 0, "include_played_free_games": 1})
-    try:
-        data = get_json(f"{GET_OWNED}?{q}")
-    except StoreError as e:
-        msg = str(e)
-        if api_key in msg:  # belt and braces: never let the key into a log
-            msg = msg.replace(api_key, "<key>")
-        raise StoreError(f"GetOwnedGames: {msg}") from None
+    data = keyed_json("GetOwnedGames", GET_OWNED,
+                      {"steamid": str(steamid64), "include_appinfo": 1,
+                       "include_played_free_games": 1}, api_key)
     games = _dict(data.get("response")).get("games")
     if not isinstance(games, list):
         # an empty response is a private profile or a bad id, not "owns nothing"
         raise StoreError("GetOwnedGames returned no game list")
-    out = set()
+    out = {}
     for g in games:
-        a = _dict(g).get("appid")
-        if isinstance(a, int) and not isinstance(a, bool) and 0 < a < 2 ** 32:
-            out.add(a)
+        g = _dict(g)
+        a = g.get("appid")
+        if not (isinstance(a, int) and not isinstance(a, bool) and 0 < a < 2 ** 32):
+            continue
+        name = g.get("name")
+        out[a] = {"name": name.strip()[:200] if isinstance(name, str) else "",
+                  "minutes": _int(g.get("playtime_forever")),
+                  "lastPlayed": _int(g.get("rtime_last_played")),
+                  "minutes2w": _int(g.get("playtime_2weeks")),
+                  "stats": g.get("has_community_visible_stats") is True,
+                  "platforms": {p: _int(g.get(f"playtime_{p}_forever")) for p in PLATFORMS}}
     if not out:
         raise StoreError("GetOwnedGames returned an empty list")
     return out
+
+
+def owned_games(steamid64, api_key):
+    """Set of app ids the account owns (see owned_details)."""
+    return set(owned_details(steamid64, api_key))
+
+
+def player_achievements(steamid64, appid, api_key, language="english"):
+    """{"total", "unlocked", "recent": [[api name, unlock time, display name]]
+    (newest 3)} for one game, or None when the game has no achievements
+    (Steam answers HTTP 400 "Requested app has no stats" then). Other failures
+    raise StoreError, so a network hiccup is never cached as "no stats"."""
+    try:
+        data = keyed_json("GetPlayerAchievements", GET_ACHIEVEMENTS,
+                          {"steamid": str(steamid64), "appid": int(appid), "l": language}, api_key)
+    except StoreError as e:
+        if e.status == 400:
+            return None
+        raise
+    stats = _dict(data.get("playerstats"))
+    rows = stats.get("achievements")
+    if not isinstance(rows, list):
+        if stats.get("success") is True:
+            return None  # a game with stats but no achievements
+        raise StoreError("GetPlayerAchievements returned no achievement list")
+    total, unlocked, recent = 0, 0, []
+    for r in rows:
+        r = _dict(r)
+        api = r.get("apiname")
+        if not isinstance(api, str):
+            continue
+        total += 1
+        if r.get("achieved") == 1:
+            unlocked += 1
+            t = _int(r.get("unlocktime"))
+            name = r.get("name")
+            recent.append([api[:200], t, name.strip()[:200] if isinstance(name, str) else ""])
+    recent.sort(key=lambda x: -x[1])
+    return {"total": total, "unlocked": unlocked, "recent": recent[:3]} if total else None
+
+
+def achievement_icons(appid, api_key, language="english"):
+    """{api name: icon URL} for a game from GetSchemaForGame. URLs that do not
+    have the exact shape of a Steam achievement icon are dropped (they end up
+    in the dashboard's HTML)."""
+    data = keyed_json("GetSchemaForGame", GET_SCHEMA, {"appid": int(appid), "l": language}, api_key)
+    rows = _dict(_dict(_dict(data.get("game")).get("availableGameStats"))).get("achievements")
+    out = {}
+    for r in rows if isinstance(rows, list) else []:
+        r = _dict(r)
+        api, url = r.get("name"), clean_icon(r.get("icon"))
+        if isinstance(api, str) and url:
+            out[api[:200]] = url
+    return out
+
+
+def clean_icon(url):
+    """An achievement icon URL rebuilt on the steamstatic host, or ""."""
+    m = ICON_RE.match(url) if isinstance(url, str) else None
+    return f"{ICON_BASE}{m.group(1)}/{m.group(2)}.{m.group(3)}" if m else ""
+
+
+def now_playing(steamid64, api_key):
+    """{"appid", "name"} of the game the account is in right now, or {}.
+    Only those two fields are read from the profile summary."""
+    data = keyed_json("GetPlayerSummaries", GET_SUMMARIES, {"steamids": str(steamid64)}, api_key)
+    players = _dict(data.get("response")).get("players")
+    p = _dict(players[0]) if isinstance(players, list) and players else {}
+    gid, name = p.get("gameid"), p.get("gameextrainfo")
+    if isinstance(gid, str) and re.fullmatch(r"[0-9]{1,10}", gid) and 0 < int(gid) < 2 ** 32:
+        return {"appid": int(gid), "name": name.strip()[:200] if isinstance(name, str) else ""}
+    return {}
 
 
 def wishlist(steamid64):

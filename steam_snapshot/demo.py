@@ -50,6 +50,18 @@ GAMES = [
     (1174180, "Red Dead Redemption 2", 0, None, 120, 0),
 ]
 
+# invented achievement counts for the "From your Steam profile" block:
+# appid -> (total, unlocked). THE FINALS is the one-achievement trap: 1/1 is
+# 100% and would top a plain "highest %" list; "closest to 100%" skips it.
+ACHIEVEMENTS = {289070: (320, 141), 427520: (37, 31), 1158310: (115, 22), 813780: (104, 38),
+                292030: (78, 49), 1091500: (57, 30), 2215430: (77, 25), 255710: (117, 41),
+                227300: (103, 52), 413150: (40, 38), 1290000: (52, 27), 526870: (51, 33),
+                1551360: (172, 90), 252950: (88, 30), 892970: (11, 10), 105600: (115, 70),
+                264710: (23, 21), 578080: (37, 15), 2073850: (1, 1), 1086940: (54, 47)}
+# invented recent unlocks: appid, achievement name, days ago
+UNLOCKS = [(427520, "Trains are Fast", 31), (1290000, "Tidy Workspace", 44), (413150, "Full Harvest", 67)]
+NOW_PLAYING = {"appid": 427520, "name": "Factorio"}  # the demo is always "in" a game
+
 WISHLIST = [
     # fictional upcoming entries: days from today, or None for "To be announced"
     (9900001, "Example: Starfall Tactics", 4),
@@ -128,4 +140,23 @@ def generate(data_dir, days=60, seed=7):
             "games": games, "wishlist": wishlist, "wishlistStatus": "ok", "notes": [],
         })
         update_history(acct_dir, {g["appid"]: g["minutes"] for g in games}, date, 0)
+    write_profile(acct_dir, games, now, rng)
     return acct_dir
+
+
+def write_profile(acct_dir, games, now, rng):
+    """steamapi.json as a quiet account with the API key would have it: all
+    hours on Windows, a quarter from before per-device counting, one game in
+    the last two weeks. Built through the same code as the real thing."""
+    from . import steamapi
+    owned = {}
+    for g in games:
+        untracked = int(g["minutes"] * (0.1 + rng.random() * 0.3))
+        owned[g["appid"]] = {"name": g["name"], "minutes": g["minutes"], "lastPlayed": g["lastPlayed"],
+                             "minutes2w": 32 if g["appid"] == 427520 else 0, "stats": True,
+                             "platforms": {"windows": g["minutes"] - untracked, "mac": 0, "linux": 0, "deck": 0}}
+    t = int(now.timestamp())
+    cache = {str(a): {"t": t, "lp": 0, "n": n, "u": u, "recent": []} for a, (n, u) in ACHIEVEMENTS.items()}
+    for appid, name, days in UNLOCKS:
+        cache[str(appid)]["recent"].append([name, t - days * 86400, name])
+    write_json(os.path.join(acct_dir, steamapi.SUMMARY), steamapi.summarise(owned, cache, {}, t))
